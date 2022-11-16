@@ -4,7 +4,7 @@
 
 NLP research template using PyTorch + PyTorch Lightning + Weights & Biases + HuggingFace. It's built to be customized but provides comprehensive, sensible default functionality.
 
-It also uses [`dlib - the Deep Learning utility library`](https://github.com/konstantinjdobler/dlib). `dlib` is integrated as a `git-subtree` -- for you this just means that all files live inside the `dlib` folder.
+It also uses [`dlib - the Deep Learning utility library`](https://github.com/konstantinjdobler/dlib). `dlib` is integrated as a `git-subtree` -- for you this just means that all its files live inside the `dlib` folder.
 
 ## Setup
 
