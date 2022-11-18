@@ -18,10 +18,10 @@ That's it -- this is the power of lockfiles.
 To generate new lockfiles after updating the `environment.yml` file, run:
 
 ```bash
-conda-lock -k explicit --conda mamba
+conda-lock -k explicit --mamba --filename-template "cuda-{platform}.lock"
 ```
 
-This will create `conda-<platform>.lock` files for all platforms specified in `environment.yml`. To create lockfiles for CPU, comment out `nvidia::pytorch-cuda=<version.number>` in `environment.yml`.
+This will create `cuda-<platform>.lock` files for all platforms specified in `environment.yml`. To create lockfiles for CPU, comment out `nvidia::pytorch-cuda=<version.number>` in `environment.yml`.
 
 ## Training
 To start a language model MLM training, run:
