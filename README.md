@@ -8,17 +8,17 @@ It also uses [`dlib - the Deep Learning utility library`](https://github.com/kon
 
 ## Setup
 
-It's recommended to use [`mamba`](https://github.com/mamba-org/mamba) to manage dependencies. `mamba` is a drop-in replacement for `conda` re-written in C++ to speed things up significantly (you can stick with conda though). To provide reproducible environments, we use `conda-lock` to generate lockfiles for each platform. You can create a `conda` environment from a lockfile like this:
+It's recommended to use [`mamba`](https://github.com/mamba-org/mamba) to manage dependencies. `mamba` is a drop-in replacement for `conda` re-written in C++ to speed things up significantly (you can stick with `conda` though). To provide reproducible environments, we use `conda-lock` to generate lockfiles for each platform. You can create a `conda` environment from a lockfile like this:
 
 ```bash
-mamba create --name <gpt4> --file cpu-linux-64.lock
+mamba env create --name <gpt4> --file cpu-linux-64.lock
 ```
 That's it -- this is the power of lockfiles.
 
 To generate new lockfiles after updating the `environment.yml` file, run:
 
 ```bash
-conda-lock -k explicit --mamba --filename-template "cuda-{platform}.lock"
+conda-lock -k env --mamba --filename-template "cuda-{platform}.lock"
 ```
 
 This will create `cuda-<platform>.lock` files for all platforms specified in `environment.yml`. To create lockfiles for CPU, comment out `nvidia::pytorch-cuda=<version.number>` in `environment.yml`.
