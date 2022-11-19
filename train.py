@@ -192,21 +192,23 @@ def main():
         assert needed_batch_size_per_device == args.effective_batch_size / num_gpus
 
         needed_grad_accum = 1
-        if needed_batch_size_per_device > args.batch_size_per_device:
-            needed_grad_accum = int(needed_batch_size_per_device / args.batch_size_per_device)
-            assert needed_grad_accum == needed_batch_size_per_device / args.batch_size_per_device
+        while (needed_grad_accum * args.batch_size_per_device < needed_batch_size_per_device) or (
+            args.effective_batch_size / (needed_grad_accum * num_gpus)
+            != int(args.effective_batch_size / (needed_grad_accum * num_gpus))
+        ):
+            needed_grad_accum += 1
 
-            needed_batch_size_per_device = needed_batch_size_per_device / needed_grad_accum
-            assert needed_batch_size_per_device == int(needed_batch_size_per_device)
-            needed_batch_size_per_device = int(needed_batch_size_per_device)
+        resulting_batch_size_per_device = args.effective_batch_size / (needed_grad_accum * num_gpus)
+        assert resulting_batch_size_per_device <= args.batch_size_per_device
+        assert resulting_batch_size_per_device == int(resulting_batch_size_per_device)
 
-        args.batch_size_per_device = needed_batch_size_per_device
+        args.batch_size_per_device = int(resulting_batch_size_per_device)
         args.gradient_accumulation_steps = needed_grad_accum
         effective_batch_size_per_step = num_gpus * args.batch_size_per_device
         logger.success(
             f"Achieved effective batch size {args.effective_batch_size} with {num_gpus} GPUs, "
-            f"{needed_batch_size_per_device} batch size per GPU and "
-            f"{needed_grad_accum} gradient accumulation steps."
+            f"{args.batch_size_per_device} batch size per GPU and "
+            f"{args.gradient_accumulation_steps} gradient accumulation steps."
         )
     else:
         effective_batch_size_per_step = get_effective_batch_size_per_step(
