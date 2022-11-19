@@ -121,16 +121,16 @@ class MiscArgs:
 
 
 def main():
-    args = parse_args_into_dataclasses(
+    parsed_arg_groups = parse_args_into_dataclasses(
         dataclasses=(
             TrainingArgs,
             MiscArgs,
         )
     )
 
-    training_args, misc_args = args
+    args, misc_args = parsed_arg_groups
     try:
-        training_args.precision = int(training_args.precision)
+        args.precision = int(args.precision)
     except ValueError:
         pass
 
@@ -139,7 +139,7 @@ def main():
     current_process_rank = get_rank()
 
     if current_process_rank == 0:
-        for arg_group in args:
+        for arg_group in parsed_arg_groups:
             logger.info(arg_group)
 
     ################ Apply fixes ##############
@@ -159,14 +159,14 @@ def main():
 
     RESUMING_TRAINING = False
     if (
-        training_args.checkpoint_path
-        and training_args.resume_training
-        and check_checkpoint_path_for_wandb(training_args.checkpoint_path)
+        args.checkpoint_path
+        and args.resume_training
+        and check_checkpoint_path_for_wandb(args.checkpoint_path)
     ):
         RESUMING_TRAINING = True
         logger.info("Resuming training from W&B")
         wandb_extra_args = dict(
-            id=check_checkpoint_path_for_wandb(training_args.checkpoint_path), resume="must"
+            id=check_checkpoint_path_for_wandb(args.checkpoint_path), resume="must"
         )  # resume W&B run
 
     wandb_logger = WandbLogger(
@@ -178,13 +178,13 @@ def main():
     )
 
     effective_batch_size_per_step = get_effective_batch_size_per_step(
-        training_args.gpus, training_args.batch_size_per_device
+        args.gpus, args.batch_size_per_device
     )  # does not take accumulation into account
 
-    for arg_group in args:
+    for arg_group in parsed_arg_groups:
         wandb_logger.log_hyperparams(dataclasses.asdict(arg_group))
     wandb_logger.log_hyperparams(
-        {"effective_batch_size": effective_batch_size_per_step * training_args.gradient_accumulation_steps}
+        {"effective_batch_size": effective_batch_size_per_step * args.gradient_accumulation_steps}
     )
     if current_process_rank == 0 and not RESUMING_TRAINING:
         wandb_logger.experiment.name = (
@@ -193,18 +193,18 @@ def main():
 
     ########### Calulate training constants ###########
     KSAMPLES = 1000
-    total_effective_batch_size = effective_batch_size_per_step * training_args.gradient_accumulation_steps
-    training_args.training_goal = int(
-        training_args.training_goal * KSAMPLES / total_effective_batch_size
+    total_effective_batch_size = effective_batch_size_per_step * args.gradient_accumulation_steps
+    args.training_goal = int(
+        args.training_goal * KSAMPLES / total_effective_batch_size
     )  # Lightning does grad_accum forward passes per step
-    val_frequency_in_optimization_steps = int(training_args.val_frequency * KSAMPLES / total_effective_batch_size)
-    training_args.val_frequency = int(
-        training_args.val_frequency * KSAMPLES / effective_batch_size_per_step
+    val_frequency_in_optimization_steps = int(args.val_frequency * KSAMPLES / total_effective_batch_size)
+    args.val_frequency = int(
+        args.val_frequency * KSAMPLES / effective_batch_size_per_step
     )  # val_frequency in lightning is every batch NOT optmization step
-    training_args.lr_warmup = int(training_args.lr_warmup * KSAMPLES / total_effective_batch_size)
+    args.lr_warmup = int(args.lr_warmup * KSAMPLES / total_effective_batch_size)
 
     tokenizer: PreTrainedTokenizer = AutoTokenizer.from_pretrained(
-        training_args.tokenizer_path or training_args.model_name_or_path, use_fast=True
+        args.tokenizer_path or args.model_name_or_path, use_fast=True
     )
 
     vocab_size = len(tokenizer)  # NOTE: tokenizer.voab_size returns size without added vocab
@@ -222,12 +222,12 @@ def main():
     model_extra_args = dict(effective_batch_size=effective_batch_size_per_step, vocab_size=vocab_size)
 
     # Resume from checkpoint if specified
-    if training_args.checkpoint_path:
-        training_args.checkpoint_path = check_for_wandb_checkpoint_and_download_if_necessary(
-            training_args.checkpoint_path, wandb_logger.experiment
+    if args.checkpoint_path:
+        args.checkpoint_path = check_for_wandb_checkpoint_and_download_if_necessary(
+            args.checkpoint_path, wandb_logger.experiment
         )
 
-        if training_args.resume_training:  # load weights, optimizer states, scheduler state, ...\
+        if args.resume_training:  # load weights, optimizer states, scheduler state, ...\
             if current_process_rank == 0:
                 resume_ksamples = wandb_logger.experiment.summary["progress/ksamples"]
                 os.environ["DLIB_PROGRESS_KSAMPLES"] = str(resume_ksamples)
@@ -236,46 +236,46 @@ def main():
 
             print("resuming from", resume_ksamples)
             model = BasicLM.load_from_checkpoint(
-                training_args.checkpoint_path,
+                args.checkpoint_path,
                 ksamples_processed=resume_ksamples,
                 effective_batch_size=effective_batch_size_per_step,
             )
             print(model.hparams.ksamples_processed)
         else:  # load only weights
-            model = BasicLM(training_args=training_args, **model_extra_args)
-            torch_load = torch.load(training_args.checkpoint_path, map_location=torch.device("cpu"))
+            model = BasicLM(training_args=args, **model_extra_args)
+            torch_load = torch.load(args.checkpoint_path, map_location=torch.device("cpu"))
             model.load_state_dict(torch_load["state_dict"], strict=False)
     else:
-        model = BasicLM(training_args=training_args, **model_extra_args)
+        model = BasicLM(training_args=args, **model_extra_args)
 
     if current_process_rank == 0:
         model.on_train_start = lambda: logger.info(
-            f"Total training steps: {training_args.training_goal} | LR warmup steps: {training_args.lr_warmup} | Validation Frequency: {val_frequency_in_optimization_steps} | Effective batch size: {total_effective_batch_size}"
+            f"Total training steps: {args.training_goal} | LR warmup steps: {args.lr_warmup} | Validation Frequency: {val_frequency_in_optimization_steps} | Effective batch size: {total_effective_batch_size}"
         )
 
     wandb_logger.watch(model, log="gradients", log_freq=500, log_graph=False)
 
     #################### Construct dataloaders & trainer #################
-    dm = LMDataModule(training_args=training_args, misc_args=misc_args)
+    dm = LMDataModule(training_args=args, misc_args=misc_args)
     lr_monitor = LearningRateMonitor(logging_interval="step")
 
     # Initialize trainer
     trainer = Trainer(
-        max_steps=training_args.training_goal,
-        val_check_interval=training_args.val_frequency,
-        gpus=training_args.gpus,
-        strategy=DDPPlugin(find_unused_parameters=False) if training_args.gpus is not None else None,
+        max_steps=args.training_goal,
+        val_check_interval=args.val_frequency,
+        gpus=args.gpus,
+        strategy=DDPPlugin(find_unused_parameters=False) if args.gpus is not None else None,
         logger=wandb_logger,
         deterministic=misc_args.force_deterministic,
         callbacks=[checkpoint_callback, wandb_disk_cleanup_callback, lr_monitor],
         enable_checkpointing=True,
-        precision=training_args.precision,
-        gradient_clip_val=training_args.gradient_clipping,
-        accumulate_grad_batches=training_args.gradient_accumulation_steps,
+        precision=args.precision,
+        gradient_clip_val=args.gradient_clipping,
+        accumulate_grad_batches=args.gradient_accumulation_steps,
         fast_dev_run=misc_args.fast_dev_run,
     )
 
-    if training_args.val_before_training:
+    if args.val_before_training:
         logger.info(f"Rank {current_process_rank} | Validation before training...")
         val_result = trainer.validate(model, dm)
         print(val_result)
@@ -285,7 +285,7 @@ def main():
     #     trainer.fit_loop.epoch_loop.global_step = wandb_logger.experiment.summary["trainer/global_step"]
 
     logger.info(f"Rank {current_process_rank} | Starting training...")
-    trainer.fit(model, dm, ckpt_path=training_args.resume_training and training_args.checkpoint_path)
+    trainer.fit(model, dm, ckpt_path=args.resume_training and args.checkpoint_path)
 
     if current_process_rank == 0:
         logger.info("Trying to save checkpoint....")
