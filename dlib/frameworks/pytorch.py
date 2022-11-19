@@ -4,6 +4,17 @@ from time import sleep
 import torch
 from loguru import logger
 
+def get_num_gpus(gpu_specifier):
+    num_gpus = 1
+    if gpu_specifier == -1:
+        num_gpus = torch.cuda.device_count()
+        if num_gpus == 0:
+            logger.warning("GPUs requested but none found")
+    elif isinstance(gpu_specifier, list):
+        num_gpus = len(gpu_specifier)
+    elif isinstance(gpu_specifier, int):
+        num_gpus = gpu_specifier
+    return int(num_gpus)
 
 def get_effective_batch_size_per_step(gpu_specifier, batch_size: int):
     multiplier = 1

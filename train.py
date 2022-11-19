@@ -15,10 +15,13 @@ from pytorch_lightning.loggers.wandb import WandbLogger
 from pytorch_lightning.plugins import DDPPlugin
 from transformers import AutoTokenizer, PreTrainedTokenizer
 
-from src.data_loading import LMDataModule
-from src.model import BasicLM
 from dlib.argparsing.dArgumentParser import dArg, parse_args_into_dataclasses
-from dlib.frameworks.pytorch import get_effective_batch_size_per_step, get_rank, set_torch_file_sharing_strategy_to_system
+from dlib.frameworks.pytorch import (
+    get_effective_batch_size_per_step,
+    get_num_gpus,
+    get_rank,
+    set_torch_file_sharing_strategy_to_system,
+)
 from dlib.frameworks.wandb import (
     WANDB_ENTITY,
     WANDB_PROJECT,
@@ -26,6 +29,8 @@ from dlib.frameworks.wandb import (
     check_checkpoint_path_for_wandb,
     check_for_wandb_checkpoint_and_download_if_necessary,
 )
+from src.data_loading import LMDataModule
+from src.model import BasicLM
 
 
 class dSchedulerType(Enum):
@@ -86,7 +91,16 @@ class TrainingArgs:
     training_goal: int = dArg(default=50_000, help="Number K samples to train for.", aliases="--tg")
     val_frequency: int = dArg(default=1000, help="Do validation every K samples.", aliases="--vfq")
     val_before_training: bool = dArg(default=False, help="Run one validation epoch before training.")
-    batch_size_per_device: int = dArg(default=8, aliases=["--batch_size_per_gpu", "-b"])
+    batch_size_per_device: int = dArg(
+        default=8,
+        help="Batch size per device. If --effective_batch_size is specified, this is the maximum batch size per device.",
+        aliases=["--batch_size_per_gpu", "-b"],
+    )
+    effective_batch_size: Optional[int] = dArg(
+        default=None,
+        help="If set, try to auto-infer batch_size_per_device and gradient_accumulation_steps based on number of GPUs given by --gpus.",
+        aliases=["--eb"],
+    )
     learning_rate: float = dArg(default=5e-5, aliases="--lr")
     lr_warmup: int = dArg(default=4000, help="Number of K samples to do a learning rate warmup.")
     lr_schedule: dSchedulerType = dArg(default=dSchedulerType.COSINE.value, help="Learning rate schedule.")
@@ -158,16 +172,10 @@ def main():
     )
 
     RESUMING_TRAINING = False
-    if (
-        args.checkpoint_path
-        and args.resume_training
-        and check_checkpoint_path_for_wandb(args.checkpoint_path)
-    ):
+    if args.checkpoint_path and args.resume_training and check_checkpoint_path_for_wandb(args.checkpoint_path):
         RESUMING_TRAINING = True
         logger.info("Resuming training from W&B")
-        wandb_extra_args = dict(
-            id=check_checkpoint_path_for_wandb(args.checkpoint_path), resume="must"
-        )  # resume W&B run
+        wandb_extra_args = dict(id=check_checkpoint_path_for_wandb(args.checkpoint_path), resume="must")  # resume W&B run
 
     wandb_logger = WandbLogger(
         project=misc_args.wandb_project or WANDB_PROJECT,
@@ -177,15 +185,43 @@ def main():
         **wandb_extra_args,
     )
 
-    effective_batch_size_per_step = get_effective_batch_size_per_step(
-        args.gpus, args.batch_size_per_device
-    )  # does not take accumulation into account
+    if args.effective_batch_size:
+        logger.info(f"Trying to auto-infer settings for effective batch size {args.effective_batch_size}...")
+        num_gpus = get_num_gpus(args.gpus)
+        needed_batch_size_per_device = int(args.effective_batch_size / num_gpus)
+        assert needed_batch_size_per_device == args.effective_batch_size / num_gpus
+
+        needed_grad_accum = 1
+        if needed_batch_size_per_device > args.batch_size_per_device:
+            needed_grad_accum = int(needed_batch_size_per_device / args.batch_size_per_device)
+            assert needed_grad_accum == needed_batch_size_per_device / args.batch_size_per_device
+
+            needed_batch_size_per_device = needed_batch_size_per_device / needed_grad_accum
+            assert needed_batch_size_per_device == int(needed_batch_size_per_device)
+            needed_batch_size_per_device = int(needed_batch_size_per_device)
+
+        args.batch_size_per_device = needed_batch_size_per_device
+        args.gradient_accumulation_steps = needed_grad_accum
+        effective_batch_size_per_step = num_gpus * args.batch_size_per_device
+        logger.success(
+            f"Achieved effective batch size {args.effective_batch_size} with {num_gpus} GPUs, "
+            f"{needed_batch_size_per_device} batch size per GPU and "
+            f"{needed_grad_accum} gradient accumulation steps."
+        )
+    else:
+        effective_batch_size_per_step = get_effective_batch_size_per_step(
+            args.gpus, args.batch_size_per_device
+        )  # does not take accumulation into account
+        args.effective_batch_size = effective_batch_size_per_step * args.gradient_accumulation_steps
+        logger.success(
+            f"Effective batch size {args.effective_batch_size} based on specified args"
+            f"{num_gpus} GPUs, {args.batch_size_per_device} batch size per GPU and"
+            f"{args.gradient_accumulation_steps} gradient accumulation steps."
+        )
 
     for arg_group in parsed_arg_groups:
         wandb_logger.log_hyperparams(dataclasses.asdict(arg_group))
-    wandb_logger.log_hyperparams(
-        {"effective_batch_size": effective_batch_size_per_step * args.gradient_accumulation_steps}
-    )
+
     if current_process_rank == 0 and not RESUMING_TRAINING:
         wandb_logger.experiment.name = (
             misc_args.wandb_run_name + "-" + wandb_logger.version
@@ -193,15 +229,14 @@ def main():
 
     ########### Calulate training constants ###########
     KSAMPLES = 1000
-    total_effective_batch_size = effective_batch_size_per_step * args.gradient_accumulation_steps
     args.training_goal = int(
-        args.training_goal * KSAMPLES / total_effective_batch_size
+        args.training_goal * KSAMPLES / args.effective_batch_size
     )  # Lightning does grad_accum forward passes per step
-    val_frequency_in_optimization_steps = int(args.val_frequency * KSAMPLES / total_effective_batch_size)
+    val_frequency_in_optimization_steps = int(args.val_frequency * KSAMPLES / args.effective_batch_size)
     args.val_frequency = int(
         args.val_frequency * KSAMPLES / effective_batch_size_per_step
     )  # val_frequency in lightning is every batch NOT optmization step
-    args.lr_warmup = int(args.lr_warmup * KSAMPLES / total_effective_batch_size)
+    args.lr_warmup = int(args.lr_warmup * KSAMPLES / args.effective_batch_size)
 
     tokenizer: PreTrainedTokenizer = AutoTokenizer.from_pretrained(
         args.tokenizer_path or args.model_name_or_path, use_fast=True
@@ -219,7 +254,7 @@ def main():
     wandb_disk_cleanup_callback = WandbCleanupDiskAndCloudSpaceCallback(cleanup_local=True, cleanup_online=False, size_limit=20)
 
     ################# Construct model ##############
-    model_extra_args = dict(effective_batch_size=effective_batch_size_per_step, vocab_size=vocab_size)
+    model_extra_args = dict(effective_batch_size_per_step=effective_batch_size_per_step, vocab_size=vocab_size)
 
     # Resume from checkpoint if specified
     if args.checkpoint_path:
@@ -238,7 +273,7 @@ def main():
             model = BasicLM.load_from_checkpoint(
                 args.checkpoint_path,
                 ksamples_processed=resume_ksamples,
-                effective_batch_size=effective_batch_size_per_step,
+                effective_batch_size_per_step=effective_batch_size_per_step,
             )
             print(model.hparams.ksamples_processed)
         else:  # load only weights
@@ -250,7 +285,7 @@ def main():
 
     if current_process_rank == 0:
         model.on_train_start = lambda: logger.info(
-            f"Total training steps: {args.training_goal} | LR warmup steps: {args.lr_warmup} | Validation Frequency: {val_frequency_in_optimization_steps} | Effective batch size: {total_effective_batch_size}"
+            f"Total training steps: {args.training_goal} | LR warmup steps: {args.lr_warmup} | Validation Frequency: {val_frequency_in_optimization_steps} | Effective batch size: {args.effective_batch_size}"
         )
 
     wandb_logger.watch(model, log="gradients", log_freq=500, log_graph=False)

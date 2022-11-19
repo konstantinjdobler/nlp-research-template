@@ -32,7 +32,7 @@ class BasicLM(pl.LightningModule):
         self,
         training_args: TrainingArgs,
         adhoc_args: ModelArgs = ModelArgs(),
-        effective_batch_size=-100000,
+        effective_batch_size_per_step=-100000,
         vocab_size=None,
         ksamples_processed=0.0,
     ) -> None:
@@ -64,7 +64,7 @@ class BasicLM(pl.LightningModule):
         if self.args.from_scratch_embeddings:
             nn.init.xavier_uniform_(self.model.get_input_embeddings().weight)
 
-        self.effective_batch_size = effective_batch_size
+        self.effective_batch_size_per_step = effective_batch_size_per_step
 
     def forward(self, x):
         return self.model(x).logits
@@ -75,7 +75,7 @@ class BasicLM(pl.LightningModule):
         return loss
 
     def on_train_batch_end(self, outputs, batch, batch_idx, unused=0) -> None:
-        self.hparams.ksamples_processed += self.effective_batch_size / 1000
+        self.hparams.ksamples_processed += self.effective_batch_size_per_step / 1000
         self.log("progress/ksamples", self.hparams.ksamples_processed, rank_zero_only=True)
 
     def validation_step(self, batch, batch_idx):
