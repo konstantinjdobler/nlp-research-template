@@ -1,6 +1,8 @@
 # need this to avoid cyclical import
 from __future__ import annotations  # fmt: skip
+
 from typing import TYPE_CHECKING  # fmt: skip
+
 if TYPE_CHECKING:  # fmt: skip
     from train import TrainingArgs  # fmt: skip
 
@@ -13,7 +15,10 @@ from torch import nn
 from torch.optim import AdamW
 from transformers.modeling_utils import PreTrainedModel
 from transformers.models.auto.configuration_auto import AutoConfig
-from transformers.models.auto.modeling_auto import AutoModelForMaskedLM
+from transformers.models.auto.modeling_auto import (
+    AutoModelForCausalLM,
+    AutoModelForMaskedLM,
+)
 from transformers.optimization import get_scheduler
 from warmup_scheduler import GradualWarmupScheduler
 
@@ -30,27 +35,34 @@ class ModelArgs:
 class BasicLM(pl.LightningModule):
     def __init__(
         self,
-        training_args: TrainingArgs,
+        training_args: "TrainingArgs",  # do in string to remove dependency when loading.
         adhoc_args: ModelArgs = ModelArgs(),
         effective_batch_size_per_step=-100000,
         vocab_size=None,
         ksamples_processed=0.0,
     ) -> None:
         super().__init__()
-        self.save_hyperparameters(
-            ignore=["from_scratch", "from_scratch_embeddings", "train_only_embeddings", "effective_batch_size"]
-        )
+        if not training_args.resume_training:
+            self.save_hyperparameters(ignore=["effective_batch_size_per_step"])
         self.args = training_args
         self.adhoc_args = adhoc_args
         config = AutoConfig.from_pretrained(self.args.model_name_or_path, return_dict=True)
 
-        self.model: PreTrainedModel = (
-            AutoModelForMaskedLM.from_pretrained(self.args.model_name_or_path, config=config)
-            if not self.args.from_scratch
-            else AutoModelForMaskedLM.from_config(config=config)
-        )
+        if self.args.model_type == "mlm":
+            self.model: PreTrainedModel = (
+                AutoModelForMaskedLM.from_pretrained(self.args.model_name_or_path, config=config)
+                if not self.args.from_scratch
+                else AutoModelForMaskedLM.from_config(config=config)
+            )
+        elif self.args.model_type == "clm":
+            self.model: PreTrainedModel = (
+                AutoModelForCausalLM.from_pretrained(self.args.model_name_or_path, config=config)
+                if not self.args.from_scratch
+                else AutoModelForCausalLM.from_config(config=config)
+            )
 
         self.model.resize_token_embeddings(vocab_size)
+
         if self.args.from_scratch and get_rank() == 0:
             logger.info("Training from scratch without pretrained weights")
 
@@ -63,6 +75,7 @@ class BasicLM(pl.LightningModule):
 
         if self.args.from_scratch_embeddings:
             nn.init.xavier_uniform_(self.model.get_input_embeddings().weight)
+            # nn.init.normal_(self.model.get_input_embeddings().weight) # alternative
 
         self.effective_batch_size_per_step = effective_batch_size_per_step
 
@@ -114,7 +127,7 @@ class BasicLM(pl.LightningModule):
 
         if self.args.lr_schedule == "reduce_on_plateau":
             scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, patience=5, verbose=True)
-            if self.args.lr_warmup > 0:  # Wrap ReduceLROnPlatesu to enable LR warmup
+            if self.args.lr_warmup > 0:  # Wrap ReduceLROnPlateau to enable LR warmup
                 scheduler = GradualWarmupScheduler(
                     optimizer, multiplier=1, total_epoch=self.args.lr_warmup, after_scheduler=scheduler
                 )

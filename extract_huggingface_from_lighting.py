@@ -4,7 +4,6 @@ from src.model import BasicLM
 
 
 @click.command()
-######## Data and Training Setup ########
 @click.option("--pl-checkpoint", type=click.Path(dir_okay=False))
 @click.option("--out-file", "-o", type=click.Path(file_okay=False))
 def main(pl_checkpoint, out_file):

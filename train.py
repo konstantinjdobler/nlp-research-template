@@ -1,21 +1,20 @@
 import dataclasses
 import os
 from dataclasses import dataclass
-from enum import Enum
 from pathlib import Path
-from typing import Optional
+from typing import Literal
 
 import torch
 import wandb
+from dargparser import Choice, dArg, dargparse
 from loguru import logger
 from pytorch_lightning import Trainer, seed_everything
 from pytorch_lightning.callbacks import LearningRateMonitor
 from pytorch_lightning.callbacks.model_checkpoint import ModelCheckpoint
 from pytorch_lightning.loggers.wandb import WandbLogger
-from pytorch_lightning.plugins import DDPPlugin
-from transformers import AutoTokenizer, PreTrainedTokenizer
+from pytorch_lightning.strategies.ddp import DDPStrategy
+from transformers import AutoTokenizer, PreTrainedModel, PreTrainedTokenizer
 
-from dlib.argparsing.dArgumentParser import dArg, parse_args_into_dataclasses
 from dlib.frameworks.pytorch import (
     get_effective_batch_size_per_step,
     get_num_gpus,
@@ -30,17 +29,8 @@ from dlib.frameworks.wandb import (
     check_for_wandb_checkpoint_and_download_if_necessary,
 )
 from src.data_loading import LMDataModule
+from src.helpers import infer_batch_size_per_device
 from src.model import BasicLM
-
-
-class dSchedulerType(Enum):
-    REDUCE_ON_PLATEAU = "reduce_on_plateau"
-    LINEAR = "linear"
-    COSINE = "cosine"
-    COSINE_WITH_RESTARTS = "cosine_with_restarts"
-    POLYNOMIAL = "polynomial"
-    CONSTANT = "constant"
-    CONSTANT_WITH_WARMUP = "constant_with_warmup"
 
 
 @dataclass
@@ -50,15 +40,18 @@ class TrainingArgs:
         help="HuggingFace model identifier. This is used to construct the model architecture and load pretrained weights if not specified otherwise",
         aliases="--model",
     )
+    model_type: Literal["mlm", "clm"] = dArg(
+        default="mlm", help="Whether to train a masked language model or a causal language model."
+    )
     resume_training: bool = dArg(
         default=False, help="Whether to resume training form checkpoint or only load the weights.", aliases="--resume"
     )
-    checkpoint_path: Optional[str] = dArg(
+    checkpoint_path: str | None = dArg(
         default=None,
         help="Path to a saved PyTorch Lightning checkpoint. You can use wandb:<wandb-run-id> syntax to load a checkpoint from W&B.",
         aliases="--checkpoint",
     )
-    tokenizer_path: Optional[str] = dArg(
+    tokenizer_path: str | None = dArg(
         default=None,
         help="Path to a directory containing a saved Huggingface PreTrainedTokenizer.",
         aliases="--tokenizer",
@@ -75,17 +68,25 @@ class TrainingArgs:
     )
     max_sequence_length: int = dArg(default=256, help="Sequence length for dataset tokenization.", aliases="--max_seq_length")
     overwrite_data_cache: bool = dArg(default=False, help="Overwrite the cached preprocessed datasets or not.", aliases="--odc")
-    gpus: Optional[int] = dArg(default=None)
+
+    ####### Hardware ###########
+    accelerator: str = dArg(
+        default="gpu",
+        help='Hardware accelerator to use. Can be gpu, cpu, tpu, mps, etc. If "auto", will auto-detect available hardware accelerator.',
+    )
+    strategy: Literal["ddp", "ddp_smart", "ddp_spawn", "dp"] = dArg(default="ddp_smart", help="Training strategy to use.")
+    devices: int | None = dArg(default=None, aliases=["--gpus", "--cpus", "--tpus"])
     workers: int = dArg(default=4, help="Number of workers for dataloader.", aliases="-w")
     preprocessing_workers: int = dArg(
         default=1,
         help="Number of workers for preprocessing the datasets. Cached datasets are only valid for the same number of preprocessing workers.",
         aliases="--pw",
     )
-    precision: str = dArg(
-        default="32",
-        help="Floating point precision to use during training. Might require specific hardware. Options: [32, 16, bf16].",
+    precision: Literal[8, 16, "bf16", "tf32", 32] = dArg(
+        default=32,
+        help="Floating point precision to use during training. Might require specific hardware.",
     )
+    compile: bool = dArg(default=False, help="Whether to compile the model with using `torch.compile`. Requires torch>=1.14")
 
     ####### General training ###########
     training_goal: int = dArg(default=50_000, help="Number K samples to train for.", aliases="--tg")
@@ -96,16 +97,18 @@ class TrainingArgs:
         help="Batch size per device. If --effective_batch_size is specified, this is the maximum batch size per device.",
         aliases=["--batch_size_per_gpu", "-b"],
     )
-    effective_batch_size: Optional[int] = dArg(
+    effective_batch_size: int | None = dArg(
         default=None,
         help="If set, try to auto-infer batch_size_per_device and gradient_accumulation_steps based on number of GPUs given by --gpus.",
         aliases=["--eb"],
     )
     learning_rate: float = dArg(default=5e-5, aliases="--lr")
     lr_warmup: int = dArg(default=4000, help="Number of K samples to do a learning rate warmup.")
-    lr_schedule: dSchedulerType = dArg(default=dSchedulerType.COSINE.value, help="Learning rate schedule.")
+    lr_schedule: Choice["cosine", "linear", "reduce_on_plateau", "constant", "cosine_with_restarts", "polynomial"] = dArg(
+        default="cosine", help="Learning rate schedule."
+    )
     weight_decay: float = dArg(default=0.0, aliases="--wd")
-    gradient_clipping: Optional[float] = dArg(default=None, aliases="--gc")
+    gradient_clipping: float | None = dArg(default=None, aliases="--gc")
     gradient_accumulation_steps: int = dArg(default=1, aliases="--accum")
     train_only_embeddings: bool = dArg(
         default=False,
@@ -120,11 +123,11 @@ class TrainingArgs:
 
 @dataclass
 class MiscArgs:
-    seed: Optional[int] = None
+    seed: int | None = None
     force_deterministic: bool = dArg(default=False, help="Force PyTorch operations to be deterministic.")
     offline: bool = dArg(default=False, help="Disable W&B online syncing.")
     fast_dev_run: bool = dArg(default=False, help="Do fast run through training and validation with reduced sizes.")
-    wandb_run_name: Optional[str] = dArg(default=None, help="Run name for the W&B online UI.", aliases="-n")
+    wandb_run_name: str | None = dArg(default=None, help="Run name for the W&B online UI.", aliases="-n")
     wandb_tags: list[str] = dArg(default_factory=list)
     too_many_open_files_fix: bool = dArg(
         default=False,
@@ -135,7 +138,7 @@ class MiscArgs:
 
 
 def main():
-    parsed_arg_groups = parse_args_into_dataclasses(
+    parsed_arg_groups = dargparse(
         dataclasses=(
             TrainingArgs,
             MiscArgs,
@@ -143,10 +146,6 @@ def main():
     )
 
     args, misc_args = parsed_arg_groups
-    try:
-        args.precision = int(args.precision)
-    except ValueError:
-        pass
 
     misc_args.seed = seed_everything(workers=True, seed=misc_args.seed)
 
@@ -171,11 +170,11 @@ def main():
         name=misc_args.wandb_run_name,
     )
 
-    RESUMING_TRAINING = False
     if args.checkpoint_path and args.resume_training and check_checkpoint_path_for_wandb(args.checkpoint_path):
-        RESUMING_TRAINING = True
         logger.info("Resuming training from W&B")
         wandb_extra_args = dict(id=check_checkpoint_path_for_wandb(args.checkpoint_path), resume="must")  # resume W&B run
+    else:
+        args.resume_training = False
 
     wandb_logger = WandbLogger(
         project=misc_args.wandb_project or WANDB_PROJECT,
@@ -187,24 +186,13 @@ def main():
 
     if args.effective_batch_size:
         logger.info(f"Trying to auto-infer settings for effective batch size {args.effective_batch_size}...")
-        num_gpus = get_num_gpus(args.gpus)
-        needed_batch_size_per_device = int(args.effective_batch_size / num_gpus)
-        assert needed_batch_size_per_device == args.effective_batch_size / num_gpus
+        num_gpus = get_num_gpus(args.devices)
+        (
+            args.batch_size_per_device,
+            args.gradient_accumulation_steps,
+            effective_batch_size_per_step,
+        ) = infer_batch_size_per_device(num_gpus, args.effective_batch_size, args.batch_size_per_device)
 
-        needed_grad_accum = 1
-        while (needed_grad_accum * args.batch_size_per_device < needed_batch_size_per_device) or (
-            args.effective_batch_size / (needed_grad_accum * num_gpus)
-            != int(args.effective_batch_size / (needed_grad_accum * num_gpus))
-        ):
-            needed_grad_accum += 1
-
-        resulting_batch_size_per_device = args.effective_batch_size / (needed_grad_accum * num_gpus)
-        assert resulting_batch_size_per_device <= args.batch_size_per_device
-        assert resulting_batch_size_per_device == int(resulting_batch_size_per_device)
-
-        args.batch_size_per_device = int(resulting_batch_size_per_device)
-        args.gradient_accumulation_steps = needed_grad_accum
-        effective_batch_size_per_step = num_gpus * args.batch_size_per_device
         logger.success(
             f"Achieved effective batch size {args.effective_batch_size} with {num_gpus} GPUs, "
             f"{args.batch_size_per_device} batch size per GPU and "
@@ -212,7 +200,7 @@ def main():
         )
     else:
         effective_batch_size_per_step = get_effective_batch_size_per_step(
-            args.gpus, args.batch_size_per_device
+            args.devices, args.batch_size_per_device
         )  # does not take accumulation into account
         args.effective_batch_size = effective_batch_size_per_step * args.gradient_accumulation_steps
         logger.success(
@@ -224,7 +212,7 @@ def main():
     for arg_group in parsed_arg_groups:
         wandb_logger.log_hyperparams(dataclasses.asdict(arg_group))
 
-    if current_process_rank == 0 and not RESUMING_TRAINING:
+    if current_process_rank == 0 and not args.resume_training:
         wandb_logger.experiment.name = (
             misc_args.wandb_run_name + "-" + wandb_logger.version
         )  # Append id to name for easier recognition in W&B UI
@@ -244,7 +232,7 @@ def main():
         args.tokenizer_path or args.model_name_or_path, use_fast=True
     )
 
-    vocab_size = len(tokenizer)  # NOTE: tokenizer.voab_size returns size without added vocab
+    vocab_size = len(tokenizer)  # NOTE: tokenizer.vocab_size returns size without added vocab
     checkpoint_callback = ModelCheckpoint(
         filename="snap-{step}-ksamples-{progress/ksamples:.2f}-loss-{val/loss:.2f}",
         monitor="val/loss",
@@ -300,8 +288,13 @@ def main():
     trainer = Trainer(
         max_steps=args.training_goal,
         val_check_interval=args.val_frequency,
-        gpus=args.gpus,
-        strategy=DDPPlugin(find_unused_parameters=False) if args.gpus is not None else None,
+        devices=args.devices,
+        accelerator=args.accelerator,
+        strategy=(
+            DDPStrategy(find_unused_parameters=False)
+            if args.accelerator == "gpu" and args.strategy == "ddp_smart"
+            else args.strategy
+        ),
         logger=wandb_logger,
         deterministic=misc_args.force_deterministic,
         callbacks=[checkpoint_callback, wandb_disk_cleanup_callback, lr_monitor],
@@ -312,14 +305,19 @@ def main():
         fast_dev_run=misc_args.fast_dev_run,
     )
 
+    if args.compile:
+        if not hasattr(torch, "compile"):
+            raise RuntimeError(
+                f"The current torch version ({torch.__version__}) does not have support for compile."
+                "Please install torch >= 1.14 or disable compile."
+            )
+        model = torch.compile(model)
+
     if args.val_before_training:
         logger.info(f"Rank {current_process_rank} | Validation before training...")
         val_result = trainer.validate(model, dm)
         print(val_result)
         exit(0)
-
-    # if RESUMING_TRAINING:
-    #     trainer.fit_loop.epoch_loop.global_step = wandb_logger.experiment.summary["trainer/global_step"]
 
     logger.info(f"Rank {current_process_rank} | Starting training...")
     trainer.fit(model, dm, ckpt_path=args.resume_training and args.checkpoint_path)
@@ -331,6 +329,13 @@ def main():
         trainer.save_checkpoint(save_path)
         artifact = wandb.Artifact(name=f"model-{wandb_logger.experiment.id}", type="model")
         artifact.add_file(save_path, name="model.ckpt")
+
+        # Also save raw huggingface checkpoint, so that we do not need to use lightning and the current code structure to load the weights
+        raw_huggingface_model: PreTrainedModel = trainer.model.model
+        save_path = str(Path(checkpoint_callback.dirpath) / "raw_huggingface")
+        raw_huggingface_model.save_pretrained(save_path)
+        artifact.add_dir(save_path, name="raw_huggingface")
+
         aliases = ["train_end", "latest"]
         wandb_logger.experiment.log_artifact(artifact, aliases=aliases)
 

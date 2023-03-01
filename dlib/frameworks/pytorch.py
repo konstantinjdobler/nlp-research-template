@@ -4,6 +4,7 @@ from time import sleep
 import torch
 from loguru import logger
 
+
 def get_num_gpus(gpu_specifier):
     num_gpus = 1
     if gpu_specifier == -1:
@@ -15,6 +16,7 @@ def get_num_gpus(gpu_specifier):
     elif isinstance(gpu_specifier, int):
         num_gpus = gpu_specifier
     return int(num_gpus)
+
 
 def get_effective_batch_size_per_step(gpu_specifier, batch_size: int):
     multiplier = 1
@@ -62,7 +64,9 @@ def main_process_first(description="", active=True, time_buffer_after_main: bool
         yield
 
 
-from pytorch_lightning.utilities.rank_zero import _get_rank 
+from pytorch_lightning.utilities.rank_zero import _get_rank
+
+
 def get_rank() -> int:
     if not torch.distributed.is_available():
         return 0  # Training on CPU

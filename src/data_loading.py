@@ -16,7 +16,11 @@ from transformers import DataCollatorForLanguageModeling
 from transformers.data.data_collator import DataCollatorForWholeWordMask
 from transformers.models.auto.tokenization_auto import AutoTokenizer
 
-from dlib.frameworks.pytorch import get_rank, main_process_first, set_torch_file_sharing_strategy_to_system
+from dlib.frameworks.pytorch import (
+    get_rank,
+    main_process_first,
+    set_torch_file_sharing_strategy_to_system,
+)
 
 
 class LMDataModule(pl.LightningDataModule):
@@ -68,7 +72,7 @@ class LMDataModule(pl.LightningDataModule):
         if get_rank() == 0:
             logger.debug((train_dev_datasets, train_dev_datasets["train"][:2]))
 
-        with main_process_first(description="Tokenizing datasets", active=self.args.gpus is not None):
+        with main_process_first(description="Tokenizing datasets", active=self.args.devices is not None):
             processed_datasets, data_collator = self.map_and_tokenize_datasets(
                 tokenizer=tokenizer, tokenizer_path=self.tokenizer_path, datasets=train_dev_datasets
             )
@@ -107,11 +111,17 @@ class LMDataModule(pl.LightningDataModule):
         logger.success(
             f"Rank {get_rank()} | Loaded datasets: {processed_datasets} | {len(processed_datasets['train'][0]['input_ids'])}"
         )
-        pad_to_multiple_of = 8 if self.args.precision in [16, "bf16"] else None
-        DataCollatorClass = DataCollatorForWholeWordMask if self.whole_word_masking else DataCollatorForLanguageModeling
-        data_collator = DataCollatorClass(
-            tokenizer=tokenizer, mlm=mlm, mlm_probability=self.mlm_probability, pad_to_multiple_of=pad_to_multiple_of
-        )
+
+        if self.args.model_type == "clm":
+            data_collator = DataCollatorForLanguageModeling(
+                tokenizer=tokenizer, mlm=False, pad_to_multiple_of=pad_to_multiple_of
+            )
+        elif self.args.model_type == "mlm":
+            pad_to_multiple_of = 8 if self.args.precision in [8, 16, "bf16", "tf32"] else None
+            DataCollatorClass = DataCollatorForWholeWordMask if self.whole_word_masking else DataCollatorForLanguageModeling
+            data_collator = DataCollatorClass(
+                tokenizer=tokenizer, mlm=mlm, mlm_probability=self.mlm_probability, pad_to_multiple_of=pad_to_multiple_of
+            )
 
         return processed_datasets, data_collator
 

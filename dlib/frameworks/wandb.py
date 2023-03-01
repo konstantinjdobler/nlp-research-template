@@ -30,16 +30,9 @@ class MyWandbLogger(WandbLogger):
             checkpoint_callback.best_model_path: checkpoint_callback.best_model_score,
             **checkpoint_callback.best_k_models,
         }
-        checkpoints = sorted(
-            (Path(p).stat().st_mtime, p, s)
-            for p, s in checkpoints.items()
-            if Path(p).is_file()
-        )
+        checkpoints = sorted((Path(p).stat().st_mtime, p, s) for p, s in checkpoints.items() if Path(p).is_file())
         checkpoints = [
-            c
-            for c in checkpoints
-            if c[1] not in self._logged_model_time.keys()
-            or self._logged_model_time[c[1]] < c[0]
+            c for c in checkpoints if c[1] not in self._logged_model_time.keys() or self._logged_model_time[c[1]] < c[0]
         ]
 
         # log iteratively all new checkpoints
@@ -62,15 +55,9 @@ class MyWandbLogger(WandbLogger):
                     if hasattr(checkpoint_callback, k)
                 },
             }
-            artifact = wandb.Artifact(
-                name=f"model-{self.experiment.id}", type="model", metadata=metadata
-            )
+            artifact = wandb.Artifact(name=f"model-{self.experiment.id}", type="model", metadata=metadata)
             artifact.add_file(p, name="model.ckpt")
-            aliases = (
-                ["latest", "best"]
-                if p == checkpoint_callback.best_model_path
-                else ["latest"]
-            )
+            aliases = ["latest", "best"] if p == checkpoint_callback.best_model_path else ["latest"]
             self.experiment.log_artifact(artifact, aliases=aliases)
 
             # remember logged models - timestamp needed in case filename didn't change (lastkckpt or custom name)
@@ -78,9 +65,7 @@ class MyWandbLogger(WandbLogger):
 
 
 class WandbCleanupDiskAndCloudSpaceCallback(Callback):
-    def __init__(
-        self, cleanup_local=True, cleanup_online=True, size_limit=0, backoff=10
-    ) -> None:
+    def __init__(self, cleanup_local=True, cleanup_online=True, size_limit=0, backoff=10) -> None:
         super().__init__()
         self.cleanup_local = cleanup_local
         self.cleanup_online = cleanup_online
@@ -89,9 +74,7 @@ class WandbCleanupDiskAndCloudSpaceCallback(Callback):
         self.counter = 0
 
     @rank_zero_only
-    def on_validation_end(
-        self, trainer: pl.Trainer, pl_module: pl.LightningModule
-    ) -> None:
+    def on_validation_end(self, trainer: pl.Trainer, pl_module: pl.LightningModule) -> None:
         if self.counter < self.backoff:
             self.counter += 1
             return
@@ -106,9 +89,7 @@ class WandbCleanupDiskAndCloudSpaceCallback(Callback):
                 for artifact in run.logged_artifacts():
                     aliases = [x["alias"] for x in artifact._attrs["aliases"]]
                     if "best" not in aliases and "keep" not in aliases:
-                        logger.info(
-                            f"Deleting outdated artifact with aliases {aliases}"
-                        )
+                        logger.info(f"Deleting outdated artifact with aliases {aliases}")
                         artifact.delete()
             else:
                 logger.error("wandb run has no logged artifacts")
@@ -116,18 +97,14 @@ class WandbCleanupDiskAndCloudSpaceCallback(Callback):
         # Free up local wandb cache (This is often A LOT of memory)
         if self.cleanup_local:
             logger.info("Starting wandb artifact cache cleanup timeout")
-            cache_cleanup_callback = lambda: subprocess.run(
-                ["wandb", "artifact", "cache", "cleanup", f"{self.size_limit}GB"]
-            )
+            cache_cleanup_callback = lambda: subprocess.run(["wandb", "artifact", "cache", "cleanup", f"{self.size_limit}GB"])
             timer = threading.Timer(
                 120.0, cache_cleanup_callback
             )  # Delay cleanupcall to avoid cleaning a temp file from the ModelCheckpoint hook that is needed to upload current checkpoint
             timer.start()
 
 
-def check_for_wandb_checkpoint_and_download_if_necessary(
-    checkpoint_path: str, wandb_run_instance
-) -> str:
+def check_for_wandb_checkpoint_and_download_if_necessary(checkpoint_path: str, wandb_run_instance) -> str:
     """
     Checks the provided checkpoint_path for the wandb regex r\"wandb:.*\".
     If matched, download the W&B artifact indicated by the id in the provided string and return its path.
@@ -138,29 +115,19 @@ def check_for_wandb_checkpoint_and_download_if_necessary(
         if get_rank() == 0:
             logger.info("Downloading W&B checkpoint...")
         wandb_model_id = checkpoint_path.split(":")[1]
-        model_tag = (
-            checkpoint_path.split(":")[2]
-            if len(checkpoint_path.split(":")) == 3
-            else "latest"
-        )
+        model_tag = checkpoint_path.split(":")[2] if len(checkpoint_path.split(":")) == 3 else "latest"
 
         """
         Only the main process should download the artifact in DDP. We add this environment variable as a guard. 
         This works only if this function is called first on the main process.
         """
         if os.environ.get(f"DLIB_ARTIFACT_PATH_{wandb_model_id}_{model_tag}"):
-            checkpoint_path = os.environ[
-                f"DLIB_ARTIFACT_PATH_{wandb_model_id}_{model_tag}"
-            ]
+            checkpoint_path = os.environ[f"DLIB_ARTIFACT_PATH_{wandb_model_id}_{model_tag}"]
         else:
-            artifact = wandb_run_instance.use_artifact(
-                f"{WANDB_ENTITY}/{WANDB_PROJECT}/model-{wandb_model_id}:{model_tag}"
-            )
+            artifact = wandb_run_instance.use_artifact(f"{WANDB_ENTITY}/{WANDB_PROJECT}/model-{wandb_model_id}:{model_tag}")
             checkpoint_path = artifact.download() + "/model.ckpt"
             logger.info(f"Path of downloaded W&B artifact: {checkpoint_path}")
-            os.environ[
-                f"DLIB_ARTIFACT_PATH_{wandb_model_id}_{model_tag}"
-            ] = checkpoint_path
+            os.environ[f"DLIB_ARTIFACT_PATH_{wandb_model_id}_{model_tag}"] = checkpoint_path
     return checkpoint_path
 
 
