@@ -6,23 +6,51 @@ NLP research template for training language models from scratch using PyTorch + 
 
 ## Setup
 
-It's recommended to use [`mamba`](https://github.com/mamba-org/mamba) to manage dependencies. `mamba` is a drop-in replacement for `conda` re-written in C++ to speed things up significantly (you can stick with `conda` though). To provide reproducible environments, we use `conda-lock` to generate lockfiles for each platform. You can create a `conda` environment from a lockfile like this:
+### Preliminaries
+
+It's recommended to use [`mamba`](https://github.com/mamba-org/mamba) to manage dependencies. `mamba` is a drop-in replacement for `conda` re-written in C++ to speed things up significantly (you can stick with `conda` though). To provide reproducible environments, we use `conda-lock` to generate lockfiles for each platform.
+
+<details><summary>Installing <code>mamba</code></summary>
+
+<p>
+
+On Unix-like platforms, run the snippet below. Otherwise, visit the [mambaforge repo](https://github.com/conda-forge/miniforge#mambaforge). Note this does not use the Anaconda installer, which reduces bloat.
 
 ```bash
-mamba env create --name <gpt4> --file cpu-linux-64.lock
+curl -L -O "https://github.com/conda-forge/miniforge/releases/latest/download/Mambaforge-$(uname)-$(uname -m).sh"
+bash Mambaforge-$(uname)-$(uname -m).sh
+```
+
+</details>
+
+<details><summary>Installing <code>conda-lock</code></summary>
+
+<p>
+
+The preferred method is to install conda-lock into your `mamba` / `conda` `base` environment using `mamba install -c conda-forge -n base conda-lock`. Then, you can access conda-lock via the automatic subcommand discovery (e.g. `mamba lock --version`). Otherwise, visit the [conda-lock repo](https://github.com/conda/conda-lock).
+
+```bash
+mamba lock install --name gpt4 --file conda-lock.yml # create environment based on lockfile
+mamba lock # create new lockfile based on environment.yml
+mamba lock --update # update packages in lockfile
+```
+
+</details>
+
+### Environment
+
+After having installed `mamba` and `conda-lock`, you can create a `mamba` environment from a lockfile with all necessary dependencies installed like this:
+
+```bash
+mamba lock install --name <gpt4> --file conda-lock.yml
 ```
 
 That's it -- this is the power of lockfiles.
 
-To generate new lockfiles after updating the `environment.yml` file, run:
+To generate new lockfiles after updating the `environment.yml` file, simply run `mamba lock`.
 
-```bash
-conda-lock -k explicit --mamba --filename-template "cuda-{platform}.lock"
-```
+<details><summary>Setup on <code>ppc64le</code></summary>
 
-This will create `cuda-<platform>.lock` files for all platforms specified in `environment.yml`. To create lockfiles for CPU, comment out `nvidia::pytorch-cuda=<version.number>` in `environment.yml`.
-
-<details><summary>Setup on ppc64le</summary>
 <p>
 It's slightly more tricky because the official channels do not provide packages compiled for `ppc64le`. However, we can use the amazing [Open-CE channel](https://opence.mit.edu/#/) by MIT instead.
 
