@@ -1,4 +1,5 @@
 import contextlib
+import os
 from time import sleep
 
 import torch
@@ -64,13 +65,14 @@ def main_process_first(description="", active=True, time_buffer_after_main: bool
         yield
 
 
-from pytorch_lightning.utilities.rank_zero import _get_rank
-
-
 def get_rank() -> int:
     if not torch.distributed.is_available():
         return 0  # Training on CPU
     if not torch.distributed.is_initialized():
-        return _get_rank()
+        rank = os.environ.get("LOCAL_RANK")  # from pytorch-lightning
+        if rank is not None:
+            return int(rank)
+        else:
+            return 0
     else:
         return torch.distributed.get_rank()
