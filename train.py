@@ -305,6 +305,9 @@ def main():
         fast_dev_run=misc_args.fast_dev_run,
     )
 
+    # https://pytorch.org/docs/stable/generated/torch.set_float32_matmul_precision.html#torch.set_float32_matmul_precision
+    torch.set_float32_matmul_precision("high")
+
     if args.compile:
         if not hasattr(torch, "compile"):
             raise RuntimeError(
