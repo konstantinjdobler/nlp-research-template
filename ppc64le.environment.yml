@@ -1,12 +1,12 @@
 name: nlp-research-template
 channels:
   - conda-forge
-  - https://ftp.osuosl.org/pub/open-ce/current/ # needed for pytorch-cuda
-  - defaults
+  - https://ftp.osuosl.org/pub/open-ce/current/ # needed for binaries compiled for ppc64le
+  - defaults # needed for some small packages (leveldb, ...)
 dependencies:
-  - pytorch=1.13 # or don't specify the version and use latest stable
+  - pytorch=1.13 # OpenCE version 1.8
   # CUDA only for Linux (on compute server machine)
-  - cudatoolkit=11.4 # [linux]
+  - cudatoolkit=11.4 # OpenCE version 1.8
   - click
   - dargparser
   - wandb
