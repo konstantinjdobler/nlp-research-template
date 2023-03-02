@@ -5,11 +5,11 @@
 # available, unless you explicitly update the lock file.
 #
 # Install this environment as "YOURENV" with:
-#     conda-lock install -n YOURENV --file conda-lock-ppc64le.yml
+#     conda-lock install -n YOURENV --file ppc64le.conda-lock.yml
 # To update a single package to the latest version compatible with the version constraints in the source:
-#     conda-lock lock  --lockfile conda-lock-ppc64le.yml --update PACKAGE
+#     conda-lock lock  --lockfile ppc64le.conda-lock.yml --update PACKAGE
 # To re-solve the entire environment, e.g. after changing a version constraint in the source file:
-#     conda-lock -f ./environment-ppc64le.yml --lockfile conda-lock-ppc64le.yml
+#     conda-lock -f ./environment-ppc64le.yml --lockfile ppc64le.conda-lock.yml
 metadata:
   channels:
   - url: conda-forge

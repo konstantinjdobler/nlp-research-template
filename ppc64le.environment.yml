@@ -4,8 +4,6 @@ channels:
   - https://ftp.osuosl.org/pub/open-ce/current/ # needed for pytorch-cuda
   - defaults
 dependencies:
-  - python=3.10 # or don't specify the version and use latest stable
-  - pip # pip must be mentioned explicitly, or conda-lock will fail
   - pytorch=1.13 # or don't specify the version and use latest stable
   # CUDA only for Linux (on compute server machine)
   - cudatoolkit=11.4 # [linux]
