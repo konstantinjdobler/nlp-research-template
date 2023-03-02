@@ -15,6 +15,7 @@ from pytorch_lightning.loggers.wandb import WandbLogger
 from pytorch_lightning.strategies.ddp import DDPStrategy
 from transformers import AutoTokenizer, PreTrainedModel, PreTrainedTokenizer
 
+from dlib.frameworks.lightning import CUDAMetricsCallback
 from dlib.frameworks.pytorch import (
     get_effective_batch_size_per_step,
     get_num_gpus,
@@ -277,12 +278,24 @@ def main():
         model.on_train_start = lambda: logger.info(
             f"Total training steps: {args.training_goal} | LR warmup steps: {args.lr_warmup} | Validation Frequency: {val_frequency_in_optimization_steps} | Effective batch size: {args.effective_batch_size}"
         )
+        
+    # https://pytorch.org/docs/stable/generated/torch.set_float32_matmul_precision.html#torch.set_float32_matmul_precision
+    torch.set_float32_matmul_precision("high")
+
+    if args.compile:
+        if not hasattr(torch, "compile"):
+            raise RuntimeError(
+                f"The current torch version ({torch.__version__}) does not have support for compile."
+                "Please install torch >= 2.0 or disable compile."
+            )
+        model = torch.compile(model)
 
     wandb_logger.watch(model, log="gradients", log_freq=500, log_graph=False)
 
     #################### Construct dataloaders & trainer #################
     dm = LMDataModule(training_args=args, misc_args=misc_args)
     lr_monitor = LearningRateMonitor(logging_interval="step")
+    cuda_monitor = CUDAMetricsCallback()
 
     # Initialize trainer
     trainer = Trainer(
@@ -297,24 +310,13 @@ def main():
         ),
         logger=wandb_logger,
         deterministic=misc_args.force_deterministic,
-        callbacks=[checkpoint_callback, wandb_disk_cleanup_callback, lr_monitor],
+        callbacks=[checkpoint_callback, wandb_disk_cleanup_callback, lr_monitor, cuda_monitor],
         enable_checkpointing=True,
         precision=args.precision,
         gradient_clip_val=args.gradient_clipping,
         accumulate_grad_batches=args.gradient_accumulation_steps,
         fast_dev_run=misc_args.fast_dev_run,
     )
-
-    # https://pytorch.org/docs/stable/generated/torch.set_float32_matmul_precision.html#torch.set_float32_matmul_precision
-    torch.set_float32_matmul_precision("high")
-
-    if args.compile:
-        if not hasattr(torch, "compile"):
-            raise RuntimeError(
-                f"The current torch version ({torch.__version__}) does not have support for compile."
-                "Please install torch >= 1.14 or disable compile."
-            )
-        model = torch.compile(model)
 
     if args.val_before_training:
         logger.info(f"Rank {current_process_rank} | Validation before training...")
