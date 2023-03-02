@@ -17,6 +17,7 @@ FROM --platform=linux/ppc64le nvidia/cuda:11.8.0-cudnn8-runtime-ubi8
 # copy over the generated environment
 COPY --from=builder /opt/env /opt/env
 ENV PATH="/opt/env/bin:${PATH}"
-RUN echo $(which   python)
-RUN ls /opt/env/bin
-RUN python -V
+
+# For debugging
+# RUN echo $(which python)
+# RUN python -V
