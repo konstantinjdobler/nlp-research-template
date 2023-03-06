@@ -52,7 +52,8 @@ To generate new lockfiles after updating the `environment.yml` file, simply run 
 <details><summary>Setup on <code>ppc64le</code></summary>
 
 <p>
-It's slightly more tricky because the official channels do not provide packages compiled for `ppc64le`. However, we can use the amazing [Open-CE channel](https://ftp.osuosl.org/pub/open-ce/current/) instead. A lockfile containing the relevant dependencies is already prepared in `ppc64le.conda-lock.yml`.
+
+It's slightly more tricky because the official channels do not provide packages compiled for <code>ppc64le</code>. However, we can use the amazing [Open-CE channel](https://ftp.osuosl.org/pub/open-ce/current/) instead. A lockfile containing the relevant dependencies is already prepared in <code>ppc64le.conda-lock.yml</code>.
 
 ```bash
 mamba lock install --name <gpt4> --file ppc64le.conda-lock.yml

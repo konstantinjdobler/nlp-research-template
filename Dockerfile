@@ -1,4 +1,4 @@
-# This is a Dockerfile intended to build an image containing all necessary dependencies for linux-ppc64le
+# This is a Dockerfile intended to build an image containing all necessary dependencies
 
 # -----------------
 # Builder container
