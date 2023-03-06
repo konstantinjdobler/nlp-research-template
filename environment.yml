@@ -21,10 +21,14 @@ dependencies:
   - tokenizers
   - datasets
   - loguru
+  - tqdm
+
+  # Dev dependencies
   - black
   - isort
   - flake8
-  - tqdm
+
+  # pip dependencies
   - pip:
       - warmup-scheduler
 
@@ -32,4 +36,5 @@ dependencies:
 platforms:
   - linux-64
   - osx-arm64 # This is for M1/M2 MacBooks
+  # - linux-aarch64 # This is linux-arm64. We can build Docker images for M1/M2 Macs on top of this - won't support MPS though
   - win-64

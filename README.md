@@ -52,11 +52,10 @@ To generate new lockfiles after updating the `environment.yml` file, simply run 
 <details><summary>Setup on <code>ppc64le</code></summary>
 
 <p>
-It's slightly more tricky because the official channels do not provide packages compiled for `ppc64le`. However, we can use the amazing [Open-CE channel](https://opence.mit.edu/#/) by MIT instead.
+It's slightly more tricky because the official channels do not provide packages compiled for `ppc64le`. However, we can use the amazing [Open-CE channel](https://ftp.osuosl.org/pub/open-ce/current/) instead. A lockfile containing the relevant dependencies is already prepared in `ppc64le.conda-lock.yml`.
 
 ```bash
-mamba create -n gpt4 python=3.10 && mamba activate gpt4
-mamba install pytorch cudatoolkit -c https://opence.mit.edu -c conda-forge -c defaults
+mamba lock install --name <gpt4> --file ppc64le.conda-lock.yml
 ```
 
 </p>
