@@ -278,7 +278,7 @@ def main():
         model.on_train_start = lambda: logger.info(
             f"Total training steps: {args.training_goal} | LR warmup steps: {args.lr_warmup} | Validation Frequency: {val_frequency_in_optimization_steps} | Effective batch size: {args.effective_batch_size}"
         )
-        
+
     # https://pytorch.org/docs/stable/generated/torch.set_float32_matmul_precision.html#torch.set_float32_matmul_precision
     torch.set_float32_matmul_precision("high")
 

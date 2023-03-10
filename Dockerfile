@@ -58,9 +58,9 @@ CMD ["/bin/bash"]
 ####################################################
 
 ARG TARGETOS TARGETARCH TARGETPLATFORM
-# NOTE: The regular output file of conda-lock for linux/amd64 is conda-linux-64.lock, so we need to rename it to conda-linux-amd64.lock
 COPY --chown=$MAMBA_USER:$MAMBA_USER conda-lock.yml /locks/conda-lock.yml
 # HACK: overwrite generic lockfile if TARGETARCH=ppc64le, otherwise ${TARGETARCH}.conda-lock.yml will not exist
+# The `*` is necessary to prevent the build from failing when the file doesn not exist
 # This way, we have a Dockerfile that works for all architectures
 COPY --chown=$MAMBA_USER:$MAMBA_USER *${TARGETARCH}.conda-lock.yml /locks/conda-lock.yml
 
