@@ -1,6 +1,6 @@
 # An opinionated template for NLP research code
 
-[![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
+[![Docker Hub](https://img.shields.io/docker/v/konstantinjdobler/nlp-research-template/torch2.1.0-cuda11.8?color=blue&label=docker&logo=docker)](https://hub.docker.com/r/konstantinjdobler/nlp-research-template/tags) [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black) ![License: MIT](https://img.shields.io/github/license/konstantinjdobler/nlp-research-template?color=green)
 
 NLP research template for training language models from scratch using PyTorch + PyTorch Lightning + Weights & Biases + HuggingFace. It's built to be customized but provides comprehensive, sensible default functionality.
 
@@ -58,6 +58,35 @@ It's slightly more tricky because the official channels do not provide packages 
 ```bash
 mamba lock install --name <gpt4> --file ppc64le.conda-lock.yml
 ```
+
+Dependencies for <code>ppce64le</code> should go into the seperate <code>ppc64le.environment.yml</code> file. Use the following command to generate a new lockfile after updating the dependencies:
+
+```bash
+mamba lock --file ppc64le.environment.yml --lockfile ppc64le.conda-lock.yml
+```
+
+</p>
+</details>
+
+### Docker
+
+For fully reproducible environments and running on HPC clusters, we provide pre-built docker images at [konstantinjdobler/nlp-research-template](https://hub.docker.com/r/konstantinjdobler/nlp-research-template/tags). We also provide a `Dockerfile` that allows you to build new docker images with updated dependencies:
+
+```bash
+docker build --tag <username>/<imagename>:<tag> --platform=linux/<amd64/ppc64le> .
+```
+
+<details><summary>Usage with SLURM / <code>pyxis</code></summary>
+
+<p>
+
+For security reasons, `docker` might be disabled on your HPC cluster. You might be able to use the SLURM plugin `pyxis` instead like this:
+
+```bash
+srun ... --container-image konstantinjdobler/nlp-research-template:torch2.1.0-cuda11.8 --container-name torch-cuda python train.py
+```
+
+This uses [`enroot`](https://github.com/NVIDIA/enroot) under the hood to import your docker image and run your code inside the container. See the [`pyxis` documentation](https://github.com/NVIDIA/pyxis) for more options, such as `--container-mounts` or `--container-writable`.
 
 </p>
 </details>
