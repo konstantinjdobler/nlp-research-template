@@ -1,16 +1,22 @@
-import click
+from dataclasses import dataclass
+
+from dargparser import dargparse
 
 from src.model import BasicLM
 
 
-@click.command()
-@click.option("--pl-checkpoint", type=click.Path(dir_okay=False))
-@click.option("--out-file", "-o", type=click.Path(file_okay=False))
-def main(pl_checkpoint, out_file):
-    lit_model = BasicLM.load_from_checkpoint(pl_checkpoint)
+@dataclass
+class Args:
+    pl_checkpoint: str
+    out_file: str
+
+
+def main(args: Args):
+    lit_model = BasicLM.load_from_checkpoint(args.pl_checkpoint)
     hugging_face_model = lit_model.model
-    hugging_face_model.save_pretrained(out_file)
+    hugging_face_model.save_pretrained(args.out_file)
 
 
 if __name__ == "__main__":
-    main()
+    args = dargparse(Args)
+    main(args)

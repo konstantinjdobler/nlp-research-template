@@ -6,7 +6,6 @@
 # Load micromamba container to copy from later
 FROM --platform=$TARGETPLATFORM mambaorg/micromamba:1.3.1 as micromamba
 
-
 # -----------------
 # Primary container
 # -----------------

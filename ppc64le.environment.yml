@@ -7,7 +7,6 @@ dependencies:
   - pytorch=1.13 # OpenCE version 1.8
   # CUDA only for Linux (on compute server machine)
   - cudatoolkit=11.4 # OpenCE version 1.8
-  - click
   - dargparser
   - wandb
   - pytorch-lightning
@@ -15,9 +14,15 @@ dependencies:
   - tokenizers
   - datasets
   - loguru
+  - tqdm
+
+  # Dev dependencies
   - black
   - isort
-  - tqdm
+  - flake8
+
+  # Pip dependencies
+  - pip
   - pip:
       - warmup-scheduler
 

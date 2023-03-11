@@ -16,6 +16,7 @@ ARG TARGETOS TARGETARCH TARGETPLATFORM
 
 COPY conda-lock.yml /locks/conda-lock.yml
 # HACK: overwrite generic lockfile if TARGETARCH=ppc64le, otherwise ${TARGETARCH}.conda-lock.yml will not exist
+# The `*` is necessary to prevent the build from failing when the file doesn not exist
 # This way, we have a Dockerfile that works for all architectures
 COPY *${TARGETARCH}.conda-lock.yml /locks/conda-lock.yml
 
@@ -30,7 +31,6 @@ RUN  --mount=type=cache,target=/opt/conda/pkgs,id=conda-${TARGETPLATFORM} \
         /locks/conda-lock.yml
 # optionally you can perfom some more cleanup on your conda install after this
 # to get a leaner conda environment
-
 
 # -----------------
 # Primary container
