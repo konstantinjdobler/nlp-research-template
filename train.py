@@ -41,7 +41,7 @@ class TrainingArgs:
         help="HuggingFace model identifier. This is used to construct the model architecture and load pretrained weights if not specified otherwise",
         aliases="--model",
     )
-    model_type: Literal["mlm", "clm"] = dArg(
+    language_modeling_strategy: Literal["mlm", "clm"] = dArg(
         default="mlm", help="Whether to train a masked language model or a causal language model."
     )
     resume_training: bool = dArg(
@@ -62,20 +62,28 @@ class TrainingArgs:
         help="Path to the data directory. By default, expects a train.txt and dev.txt file inside the directory.",
         aliases="-d",
     )
+    train_file: str = dArg(default="train.txt")
+    dev_file: str = dArg(default="dev.txt")
+    line_by_line: bool = dArg(default=False, help="Process dataset line by line instead of chunking.")
     language: str = dArg(
         default=None,
         help="If specified, the data is expected to lie inside a subdirectory with this name.",
         aliases=["--lang", "--lg", "-l"],
     )
-    max_sequence_length: int = dArg(default=256, help="Sequence length for dataset tokenization.", aliases="--max_seq_length")
+    max_sequence_length: int = dArg(
+        default=256, help="Sequence length for dataset tokenization.", aliases=["--max_seq_length", "--block_size"]
+    )
     overwrite_data_cache: bool = dArg(default=False, help="Overwrite the cached preprocessed datasets or not.", aliases="--odc")
-
+    conserve_disk_space: bool = dArg(default=False, help="Cleanup cache files whenever possible to save disk space.")
+    data_preprocessing_only: bool = dArg(default=False, help="Exit the script after data preprocessing. Do not start training.")
     ####### Hardware ###########
     accelerator: str = dArg(
         default="gpu",
         help='Hardware accelerator to use. Can be gpu, cpu, tpu, mps, etc. If "auto", will auto-detect available hardware accelerator.',
     )
-    strategy: Literal["ddp", "ddp_smart", "ddp_spawn", "dp"] = dArg(default="ddp_smart", help="Training strategy to use.")
+    strategy: Literal["ddp", "ddp_smart", "ddp_spawn", "ddp_cpu", "dp", None] = dArg(
+        default="ddp_smart", help="Distributed training strategy to use."
+    )
     devices: int | None = dArg(default=None, aliases=["--gpus", "--cpus", "--tpus"])
     workers: int = dArg(default=4, help="Number of workers for dataloader.", aliases="-w")
     preprocessing_workers: int = dArg(
@@ -139,19 +147,11 @@ class MiscArgs:
 
 
 def main():
-    parsed_arg_groups = dargparse(
-        dataclasses=(
-            TrainingArgs,
-            MiscArgs,
-        )
-    )
+    parsed_arg_groups = dargparse(dataclasses=(TrainingArgs, MiscArgs))
 
     args, misc_args = parsed_arg_groups
-
     misc_args.seed = seed_everything(workers=True, seed=misc_args.seed)
-
     current_process_rank = get_rank()
-
     if current_process_rank == 0:
         for arg_group in parsed_arg_groups:
             logger.info(arg_group)
@@ -160,17 +160,15 @@ def main():
     if misc_args.too_many_open_files_fix:
         logger.info("Setting torch sharing strategy to 'file_system'")
         set_torch_file_sharing_strategy_to_system()
-
-    os.environ["TOKENIZERS_PARALLELISM"] = "true"
+    os.environ["TOKENIZERS_PARALLELISM"] = "true"  # only relevant when tokenized dataset has not been cached yet
 
     ############# Construct W&B Logger ##############
-    if misc_args.offline or misc_args.fast_dev_run:
+    if misc_args.offline or misc_args.fast_dev_run or args.data_preprocessing_only:
         os.environ["WANDB_MODE"] = "dryrun"
 
     wandb_extra_args = dict(
         name=misc_args.wandb_run_name,
     )
-
     if args.checkpoint_path and args.resume_training and check_checkpoint_path_for_wandb(args.checkpoint_path):
         logger.info("Resuming training from W&B")
         wandb_extra_args = dict(id=check_checkpoint_path_for_wandb(args.checkpoint_path), resume="must")  # resume W&B run
@@ -185,6 +183,7 @@ def main():
         **wandb_extra_args,
     )
 
+    #### Calculate effective batch size / gradient accumulation steps ####
     if args.effective_batch_size:
         logger.info(f"Trying to auto-infer settings for effective batch size {args.effective_batch_size}...")
         num_gpus = get_num_gpus(args.devices)
@@ -194,8 +193,8 @@ def main():
             effective_batch_size_per_step,
         ) = infer_batch_size_per_device(num_gpus, args.effective_batch_size, args.batch_size_per_device)
 
-        logger.success(
-            f"Achieved effective batch size {args.effective_batch_size} with {num_gpus} GPUs, "
+        logger.info(
+            f"Using effective batch size {args.effective_batch_size} with {num_gpus} GPUs, "
             f"{args.batch_size_per_device} batch size per GPU and "
             f"{args.gradient_accumulation_steps} gradient accumulation steps."
         )
@@ -204,7 +203,7 @@ def main():
             args.devices, args.batch_size_per_device
         )  # does not take accumulation into account
         args.effective_batch_size = effective_batch_size_per_step * args.gradient_accumulation_steps
-        logger.success(
+        logger.info(
             f"Effective batch size {args.effective_batch_size} based on specified args"
             f"{num_gpus} GPUs, {args.batch_size_per_device} batch size per GPU and"
             f"{args.gradient_accumulation_steps} gradient accumulation steps."
@@ -222,11 +221,11 @@ def main():
     KSAMPLES = 1000
     args.training_goal = int(
         args.training_goal * KSAMPLES / args.effective_batch_size
-    )  # Lightning does grad_accum forward passes per step
+    )  # Lightning does `gradient_accumulation_steps` many forward passes per step (step := optimization step)
     val_frequency_in_optimization_steps = int(args.val_frequency * KSAMPLES / args.effective_batch_size)
     args.val_frequency = int(
         args.val_frequency * KSAMPLES / effective_batch_size_per_step
-    )  # val_frequency in lightning is every batch NOT optmization step
+    )  # val_frequency in lightning is every forward pass NOT optmization step
     args.lr_warmup = int(args.lr_warmup * KSAMPLES / args.effective_batch_size)
 
     tokenizer: PreTrainedTokenizer = AutoTokenizer.from_pretrained(
@@ -240,7 +239,7 @@ def main():
         mode="min",
         # save_last=True,
         auto_insert_metric_name=False,
-        every_n_train_steps=5 * val_frequency_in_optimization_steps,  # don't save on every val frqcy
+        every_n_train_steps=5 * val_frequency_in_optimization_steps,  # don't save on every val epoch
     )
     wandb_disk_cleanup_callback = WandbCleanupDiskAndCloudSpaceCallback(cleanup_local=True, cleanup_online=False, size_limit=20)
 
@@ -255,12 +254,15 @@ def main():
 
         if args.resume_training:  # load weights, optimizer states, scheduler state, ...\
             if current_process_rank == 0:
-                resume_ksamples = wandb_logger.experiment.summary["progress/ksamples"]
+                resume_ksamples = wandb_logger.experiment.summary[
+                    "progress/ksamples"
+                ]  # TODO: use ksamples from checkpoint instead of run summary
                 os.environ["DLIB_PROGRESS_KSAMPLES"] = str(resume_ksamples)
             else:
+                # need to pass via env var because wandb_logger is only available on main process
                 resume_ksamples = float(os.environ["DLIB_PROGRESS_KSAMPLES"])
 
-            print("resuming from", resume_ksamples)
+            print("Resuming from", resume_ksamples)
             model = BasicLM.load_from_checkpoint(
                 args.checkpoint_path,
                 ksamples_processed=resume_ksamples,
@@ -278,10 +280,10 @@ def main():
         model.on_train_start = lambda: logger.info(
             f"Total training steps: {args.training_goal} | LR warmup steps: {args.lr_warmup} | Validation Frequency: {val_frequency_in_optimization_steps} | Effective batch size: {args.effective_batch_size}"
         )
+    wandb_logger.watch(model, log="gradients", log_freq=500, log_graph=False)
 
     # https://pytorch.org/docs/stable/generated/torch.set_float32_matmul_precision.html#torch.set_float32_matmul_precision
     torch.set_float32_matmul_precision("high")
-
     if args.compile:
         if not hasattr(torch, "compile"):
             raise RuntimeError(
@@ -290,12 +292,21 @@ def main():
             )
         model = torch.compile(model)
 
-    wandb_logger.watch(model, log="gradients", log_freq=500, log_graph=False)
-
     #################### Construct dataloaders & trainer #################
     dm = LMDataModule(training_args=args, misc_args=misc_args)
     lr_monitor = LearningRateMonitor(logging_interval="step")
     cuda_monitor = CUDAMetricsCallback()
+
+    # set correct values
+    if args.accelerator == "cpu":
+        if args.devices == 1 or args.devices is None:
+            args.strategy = None
+        else:
+            args.strategy = "ddp_cpu"
+
+    if args.accelerator == "gpu" and args.strategy == "ddp_smart":
+        # "smart" DDP skipping the find_unused_parameters step - slightly faster
+        args.strategy = DDPStrategy(find_unused_parameters=False)
 
     # Initialize trainer
     trainer = Trainer(
@@ -303,11 +314,7 @@ def main():
         val_check_interval=args.val_frequency,
         devices=args.devices,
         accelerator=args.accelerator,
-        strategy=(
-            DDPStrategy(find_unused_parameters=False)
-            if args.accelerator == "gpu" and args.strategy == "ddp_smart"
-            else args.strategy
-        ),
+        strategy=args.strategy,
         logger=wandb_logger,
         deterministic=misc_args.force_deterministic,
         callbacks=[checkpoint_callback, wandb_disk_cleanup_callback, lr_monitor, cuda_monitor],
@@ -319,13 +326,16 @@ def main():
     )
 
     if args.val_before_training:
+        # TODO: we could use a new trainer with Trainer(devices=1, num_nodes=1) to prevent samples from possibly getting replicated with DistributedSampler here.
         logger.info(f"Rank {current_process_rank} | Validation before training...")
         val_result = trainer.validate(model, dm)
         print(val_result)
-        exit(0)
 
     logger.info(f"Rank {current_process_rank} | Starting training...")
     trainer.fit(model, dm, ckpt_path=args.resume_training and args.checkpoint_path)
+
+    # Validate after training has finished
+    trainer.validate(model, dm)
 
     if current_process_rank == 0:
         logger.info("Trying to save checkpoint....")
@@ -336,7 +346,7 @@ def main():
         artifact.add_file(save_path, name="model.ckpt")
 
         # Also save raw huggingface checkpoint, so that we do not need to use lightning and the current code structure to load the weights
-        raw_huggingface_model: PreTrainedModel = trainer.model.model
+        raw_huggingface_model: PreTrainedModel = trainer.lightning_module.model
         save_path = str(Path(checkpoint_callback.dirpath) / "raw_huggingface")
         raw_huggingface_model.save_pretrained(save_path)
         artifact.add_dir(save_path, name="raw_huggingface")

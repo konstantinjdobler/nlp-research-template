@@ -1,12 +1,5 @@
-# need this to avoid cyclical import
-from __future__ import annotations  # fmt: skip
-
-from typing import TYPE_CHECKING  # fmt: skip
-
-if TYPE_CHECKING:  # fmt: skip
-    from train import TrainingArgs  # fmt: skip
-
 from dataclasses import dataclass
+from typing import TYPE_CHECKING
 
 import pytorch_lightning as pl
 import torch
@@ -23,6 +16,9 @@ from transformers.optimization import get_scheduler
 from warmup_scheduler import GradualWarmupScheduler
 
 from dlib.frameworks.pytorch import get_rank
+
+if TYPE_CHECKING:
+    from train import TrainingArgs
 
 
 @dataclass
@@ -48,13 +44,13 @@ class BasicLM(pl.LightningModule):
         self.adhoc_args = adhoc_args
         config = AutoConfig.from_pretrained(self.args.model_name_or_path, return_dict=True)
 
-        if self.args.model_type == "mlm":
+        if self.args.language_modeling_strategy == "mlm":
             self.model: PreTrainedModel = (
                 AutoModelForMaskedLM.from_pretrained(self.args.model_name_or_path, config=config)
                 if not self.args.from_scratch
                 else AutoModelForMaskedLM.from_config(config=config)
             )
-        elif self.args.model_type == "clm":
+        elif self.args.language_modeling_strategy == "clm":
             self.model: PreTrainedModel = (
                 AutoModelForCausalLM.from_pretrained(self.args.model_name_or_path, config=config)
                 if not self.args.from_scratch
@@ -84,16 +80,22 @@ class BasicLM(pl.LightningModule):
 
     def training_step(self, batch, batch_idx):
         loss = self.model(**batch).loss
-        self.log("train/loss", loss)
+        self.log("train/loss", loss, on_step=True, on_epoch=False)
         return loss
 
     def on_train_batch_end(self, outputs, batch, batch_idx, unused=0) -> None:
         self.hparams.ksamples_processed += self.effective_batch_size_per_step / 1000
-        self.log("progress/ksamples", self.hparams.ksamples_processed, rank_zero_only=True)
+        self.log("progress/ksamples", self.hparams.ksamples_processed, rank_zero_only=True, on_step=True, on_epoch=False)
 
     def validation_step(self, batch, batch_idx):
         loss = self.model(**batch).loss
-        self.log_dict({"val/loss": loss, "progress/ksamples": self.hparams.ksamples_processed}, sync_dist=True)
+
+        self.log_dict(
+            {"val/loss": loss, "progress/ksamples": self.hparams.ksamples_processed},
+            on_step=False,
+            on_epoch=True,
+            sync_dist=True,
+        )
 
     def configure_optimizers(self):
         if self.global_rank == 0:
