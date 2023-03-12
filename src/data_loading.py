@@ -76,7 +76,7 @@ class LMDataModule(pl.LightningDataModule):
             else:
                 processed_datasets = self.load_and_process_dataset(tokenizer, tokenized_data_dir)
                 logger.info(f"Saving dataset to {cache_path}...")
-                processed_datasets.save_to_disk(cache_path)
+                processed_datasets.save_to_disk(cache_path, num_proc=self.args.preprocessing_workers)
 
         if self.args.language_modeling_strategy == "clm":
             data_collator = DataCollatorForLanguageModeling(
@@ -126,7 +126,7 @@ class LMDataModule(pl.LightningDataModule):
         else:
             processed_datasets = self.process_dataset_in_chunks(tokenizer=tokenizer, train_dev_datasets=train_dev_datasets)
 
-        processed_datasets["train"] = processed_datasets["train"].shuffle(seed=self.misc_args.seed)
+        # processed_datasets["train"] = processed_datasets["train"].shuffle(seed=self.misc_args.seed) # <-- this is bad, triggers super expensive .flatten_indices op when .save_to_disk
         logger.success(
             f"Rank {get_rank()} | Finished processing datasets: {processed_datasets} | First sample len: {len(processed_datasets['train'][0]['input_ids'])}"
         )
@@ -206,7 +206,7 @@ class LMDataModule(pl.LightningDataModule):
         common_args = dict(
             batch_size=self.args.batch_size_per_device,
             num_workers=self.args.workers,
-            persistent_workers=True, # https://discuss.pytorch.org/t/what-are-the-dis-advantages-of-persistent-workers/102110/10
+            persistent_workers=True,
             pin_memory=True,
             worker_init_fn=set_torch_file_sharing_strategy_to_system if self.misc_args.too_many_open_files_fix else None,
             shuffle=True,
@@ -217,7 +217,7 @@ class LMDataModule(pl.LightningDataModule):
         common_args = dict(
             batch_size=self.args.batch_size_per_device,
             num_workers=self.args.workers,
-            persistent_workers=True, # https://discuss.pytorch.org/t/what-are-the-dis-advantages-of-persistent-workers/102110/10
+            persistent_workers=True,
             pin_memory=True,
             worker_init_fn=set_torch_file_sharing_strategy_to_system if self.misc_args.too_many_open_files_fix else None,
         )
