@@ -81,8 +81,8 @@ class TrainingArgs:
         default="gpu",
         help='Hardware accelerator to use. Can be gpu, cpu, tpu, mps, etc. If "auto", will auto-detect available hardware accelerator.',
     )
-    strategy: Literal["ddp", "ddp_smart", "ddp_spawn", "ddp_cpu", "dp", None] = dArg(
-        default="ddp_smart", help="Distributed training strategy to use."
+    distributed_strategy: Literal["ddp", "ddp_smart", "ddp_spawn", "ddp_fork", "dp", None] = dArg(
+        default="ddp_smart", help="Distributed training strategy to use.", aliases=["--dist_strategy", "--ds"]
     )
     devices: int | None = dArg(default=None, aliases=["--gpus", "--cpus", "--tpus"])
     workers: int = dArg(default=4, help="Number of workers for dataloader.", aliases="-w")
@@ -184,6 +184,7 @@ def main():
     )
 
     #### Calculate effective batch size / gradient accumulation steps ####
+    ACCELERATOR = args.accelerator.upper()
     if args.effective_batch_size:
         logger.info(f"Trying to auto-infer settings for effective batch size {args.effective_batch_size}...")
         num_gpus = get_num_gpus(args.devices)
@@ -194,8 +195,8 @@ def main():
         ) = infer_batch_size_per_device(num_gpus, args.effective_batch_size, args.batch_size_per_device)
 
         logger.info(
-            f"Using effective batch size {args.effective_batch_size} with {num_gpus} GPUs, "
-            f"{args.batch_size_per_device} batch size per GPU and "
+            f"Using effective batch size {args.effective_batch_size} with {num_gpus} {ACCELERATOR}s, "
+            f"{args.batch_size_per_device} batch size per {ACCELERATOR} and "
             f"{args.gradient_accumulation_steps} gradient accumulation steps."
         )
     else:
@@ -205,7 +206,7 @@ def main():
         args.effective_batch_size = effective_batch_size_per_step * args.gradient_accumulation_steps
         logger.info(
             f"Effective batch size {args.effective_batch_size} based on specified args"
-            f"{num_gpus} GPUs, {args.batch_size_per_device} batch size per GPU and"
+            f"{num_gpus} {ACCELERATOR}s, {args.batch_size_per_device} batch size per {ACCELERATOR} and"
             f"{args.gradient_accumulation_steps} gradient accumulation steps."
         )
 
@@ -295,18 +296,13 @@ def main():
     #################### Construct dataloaders & trainer #################
     dm = LMDataModule(training_args=args, misc_args=misc_args)
     lr_monitor = LearningRateMonitor(logging_interval="step")
-    cuda_monitor = CUDAMetricsCallback()
+    callbacks = [checkpoint_callback, wandb_disk_cleanup_callback, lr_monitor]
+    if args.accelerator == "gpu":
+        callbacks.append(CUDAMetricsCallback())
 
-    # set correct values
-    if args.accelerator == "cpu":
-        if args.devices == 1 or args.devices is None:
-            args.strategy = None
-        else:
-            args.strategy = "ddp_cpu"
-
-    if args.accelerator == "gpu" and args.strategy == "ddp_smart":
+    if args.accelerator == "gpu" and args.distributed_strategy == "ddp_smart":
         # "smart" DDP skipping the find_unused_parameters step - slightly faster
-        args.strategy = DDPStrategy(find_unused_parameters=False)
+        args.distributed_strategy = DDPStrategy(find_unused_parameters=False)
 
     # Initialize trainer
     trainer = Trainer(
@@ -314,10 +310,10 @@ def main():
         val_check_interval=args.val_frequency,
         devices=args.devices,
         accelerator=args.accelerator,
-        strategy=args.strategy,
+        strategy=args.distributed_strategy,
         logger=wandb_logger,
         deterministic=misc_args.force_deterministic,
-        callbacks=[checkpoint_callback, wandb_disk_cleanup_callback, lr_monitor, cuda_monitor],
+        callbacks=callbacks,
         enable_checkpointing=True,
         precision=args.precision,
         gradient_clip_val=args.gradient_clipping,
