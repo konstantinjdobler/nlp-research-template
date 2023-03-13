@@ -206,7 +206,7 @@ class LMDataModule(pl.LightningDataModule):
         common_args = dict(
             batch_size=self.args.batch_size_per_device,
             num_workers=self.args.workers,
-            persistent_workers=True,
+            persistent_workers=True,  #  # https://discuss.pytorch.org/t/what-are-the-dis-advantages-of-persistent-workers/102110/10
             pin_memory=True,
             worker_init_fn=set_torch_file_sharing_strategy_to_system if self.misc_args.too_many_open_files_fix else None,
             shuffle=True,
@@ -217,7 +217,7 @@ class LMDataModule(pl.LightningDataModule):
         common_args = dict(
             batch_size=self.args.batch_size_per_device,
             num_workers=self.args.workers,
-            persistent_workers=True,
+            persistent_workers=True,  #  # https://discuss.pytorch.org/t/what-are-the-dis-advantages-of-persistent-workers/102110/10
             pin_memory=True,
             worker_init_fn=set_torch_file_sharing_strategy_to_system if self.misc_args.too_many_open_files_fix else None,
         )

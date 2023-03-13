@@ -76,8 +76,9 @@ class TrainingArgs:
     overwrite_data_cache: bool = dArg(default=False, help="Overwrite the cached preprocessed datasets or not.", aliases="--odc")
     conserve_disk_space: bool = dArg(default=False, help="Cleanup cache files whenever possible to save disk space.")
     data_preprocessing_only: bool = dArg(default=False, help="Exit the script after data preprocessing. Do not start training.")
+
     ####### Hardware ###########
-    accelerator: str = dArg(
+    accelerator: Literal["gpu", "cpu", "tpu", "mps", "auto"] = dArg(
         default="gpu",
         help='Hardware accelerator to use. Can be gpu, cpu, tpu, mps, etc. If "auto", will auto-detect available hardware accelerator.',
     )
@@ -118,7 +119,7 @@ class TrainingArgs:
     )
     weight_decay: float = dArg(default=0.0, aliases="--wd")
     gradient_clipping: float | None = dArg(default=None, aliases="--gc")
-    gradient_accumulation_steps: int = dArg(default=1, aliases="--accum")
+    gradient_accumulation_steps: int = dArg(default=1, aliases=["--gas", "--accum"])
     train_only_embeddings: bool = dArg(
         default=False,
         help="Train only the embedding layer of the model and keep the other transformer layers frozen.",
@@ -137,13 +138,13 @@ class MiscArgs:
     offline: bool = dArg(default=False, help="Disable W&B online syncing.")
     fast_dev_run: bool = dArg(default=False, help="Do fast run through training and validation with reduced sizes.")
     wandb_run_name: str | None = dArg(default=None, help="Run name for the W&B online UI.", aliases="-n")
-    wandb_tags: list[str] = dArg(default_factory=list)
+    wandb_tags: list[str] = dArg(default=[])
+    wandb_project: str = dArg(default=None)
     too_many_open_files_fix: bool = dArg(
         default=False,
         help='Apply fix to circumvent "Too many open files" error caused by the PyTorch Dataloader when using many workers or large batches.',
         aliases="--open_files_fix",
     )
-    wandb_project: str = dArg(default=None)
 
 
 def main():
@@ -185,9 +186,9 @@ def main():
 
     #### Calculate effective batch size / gradient accumulation steps ####
     ACCELERATOR = args.accelerator.upper()
+    num_gpus = get_num_gpus(args.devices)
     if args.effective_batch_size:
         logger.info(f"Trying to auto-infer settings for effective batch size {args.effective_batch_size}...")
-        num_gpus = get_num_gpus(args.devices)
         (
             args.batch_size_per_device,
             args.gradient_accumulation_steps,
