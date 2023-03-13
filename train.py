@@ -301,9 +301,12 @@ def main():
     if args.accelerator == "gpu":
         callbacks.append(CUDAMetricsCallback())
 
-    if args.accelerator == "gpu" and args.distributed_strategy == "ddp_smart":
-        # "smart" DDP skipping the find_unused_parameters step - slightly faster
-        args.distributed_strategy = DDPStrategy(find_unused_parameters=False)
+    # "smart" DDP skipping the find_unused_parameters step - slightly faster
+    distributed_strategy = (
+        DDPStrategy(find_unused_parameters=False)
+        if args.accelerator == "gpu" and args.distributed_strategy == "ddp_smart"
+        else args.distributed_strategy
+    )
 
     # Initialize trainer
     trainer = Trainer(
@@ -311,7 +314,7 @@ def main():
         val_check_interval=args.val_frequency,
         devices=args.devices,
         accelerator=args.accelerator,
-        strategy=args.distributed_strategy,
+        strategy=distributed_strategy,
         logger=wandb_logger,
         deterministic=misc_args.force_deterministic,
         callbacks=callbacks,
