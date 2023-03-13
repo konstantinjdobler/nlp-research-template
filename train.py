@@ -351,6 +351,8 @@ def main():
         aliases = ["train_end", "latest"]
         wandb_logger.experiment.log_artifact(artifact, aliases=aliases)
 
+        logger.success("Saving finished!")
+
 
 if __name__ == "__main__":
     main()
