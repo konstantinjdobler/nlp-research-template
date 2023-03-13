@@ -1,14 +1,43 @@
+"""
+This script allows you train and compare tokenizers using the HuggingFace transformers and tokenizers librarires.
+
+Example usage:
+python train_tokenizer.py --language de --train_file ./data/de/train.txt --vocab_size 32_000 --custom_tokenizers xlm-roberta-base bpe --off_the_shelf_tokenizers xlm-roberta-base
+
+This would train a XLM-RoBERTa tokenizer and a BPE tokenizer with a vocab size of 32k on the provided data and compare it to the pretrained XLM-RoBERTa tokenizer.
+"""
+
+
 import os
 from dataclasses import dataclass
 
-from datasets.load import load_dataset
+from dargparser import dArg, dargparse
+from datasets import load_dataset
 from tokenizers.implementations import ByteLevelBPETokenizer
 from tokenizers.processors import RobertaProcessing
 from tqdm import tqdm
-from transformers import XLMRobertaTokenizerFast
-from transformers.models.auto.tokenization_auto import AutoTokenizer
+from transformers import AutoTokenizer, XLMRobertaTokenizerFast
 
-from dlib.argparsing.dArgumentParser import dArg, parse_args_into_dataclasses
+
+@dataclass
+class Args:
+    train_file: str
+    training_cutoff: int = dArg(default=50_000_000, help="Cutoff tokenizer training after that many samples.")
+    language: str = dArg(default="de", help="Language identifier. Just used for naming.", aliases="--lg")
+    prefix: str = dArg(default="", help="Prefix to prepend to the tokenizer name.")
+    vocab_size: int = dArg(default=50_000)
+    lower_case: bool = dArg(default=False)
+    overwrite_cache: bool = dArg(default=False)
+    custom_tokenizers: list[str] = dArg(
+        default=[],
+        help="A list of tokenizers to train on the provided data. Use tokenizer spec form, i.e. <tokenizer_name>"
+        "or <tokenizer_name>:overwrite to overwrite any existing trained tokenizer with the same name."
+        "The tokenizer_name must be a valid HuggingFace tokenizer name or bpe to train a Byte-Level BPE tokenizer.",
+        aliases="--ct",
+    )
+    off_the_shelf_tokenizers: list[str] = dArg(
+        default=[], help="A list of off-the-shelf HuggingFace tokenizers to compare against.", aliases="--otst"
+    )
 
 
 def get_training_corpus(datasets, batch_size=1000, cutoff=None):
@@ -49,7 +78,7 @@ def transformers_tokenizer(
     cache_path = f"./tokenizers/{tokenizer_lg_tag}/{name}-{int(vocab_size/1000)}k"
 
     print("\n", f"############# {name} {'ADAPTED' if adapt else ''} ##############")
-    tokenizer = AutoTokenizer.from_pretrained(name, use_fast=True, add_prefix_space=True, do_lower_case=lower_case)
+    tokenizer = AutoTokenizer.from_pretrained(name, use_fast=True, add_prefix_space=True)
     if adapt:
         if os.path.exists(cache_path) and not overwrite_cache:
             tokenizer = AutoTokenizer.from_pretrained(cache_path)
@@ -61,12 +90,7 @@ def transformers_tokenizer(
     total_tokens, num_samples, total_chars = eval_tokenizer(datasets, tokenizer)
     print_eval_results(name, total_tokens, num_samples, total_chars)
 
-    print(
-        tokenizer.tokenize(TEXT, add_special_tokens=True),
-        "\n",
-        tokenizer.decode(tokenizer("LOLwasfür eins äq wiüiünicer boi").input_ids),
-        "\n",
-    )
+    print(tokenizer.tokenize(EXAMPLE_TEXT, add_special_tokens=True), "\n")
 
 
 def bpe_huggingface_tokenizer(
@@ -82,6 +106,8 @@ def bpe_huggingface_tokenizer(
     if not os.path.exists(cache_path) or overwrite_cache:
         print("\n", tokenizer_lg_tag, vocab_size)
         print("\n", "############# BPE ##############")
+
+        # TODO: make normalization configurable
         bpe_tokenizer = ByteLevelBPETokenizer(add_prefix_space=True, lowercase=lower_case)  # x unicode_normalizer="nfkc")
         # bpe_tokenizer.normalizer = normalizers.NFKC()
 
@@ -108,8 +134,8 @@ def bpe_huggingface_tokenizer(
     bpe_tokenizer = AutoTokenizer.from_pretrained(cache_path)
     total_tokens, num_samples, total_chars = eval_tokenizer(datasets, bpe_tokenizer)
     print_eval_results("Byte-Level BPE", total_tokens, num_samples, total_chars)
-    bpe_result = bpe_tokenizer.tokenize(TEXT, add_special_tokens=True)
-    print(bpe_result, "\n", bpe_tokenizer.decode(bpe_tokenizer("LOLwasfür eins äq wiüiünicer boi").input_ids))
+    bpe_result = bpe_tokenizer.tokenize(EXAMPLE_TEXT, add_special_tokens=True)
+    print(bpe_result, "\n")
 
 
 def print_eval_results(name: str, total_tokens, num_samples, total_chars):
@@ -124,26 +150,7 @@ def print_eval_results(name: str, total_tokens, num_samples, total_chars):
     )
 
 
-# NEW_VOCAB_SIZE = 50_000
-# LG = "de"
-# TOKENIZER_LG = "cc100-de"
-TEXT = "BREAKING: JPM ATEUA MWANASHERIA MKUU MPYA WA SERIKALI, MASAJU AHAMISHWA</s>Taarifa kuhusu kifo cha Radio wa Uganda</s>Hospitali ya Apollo yatoa “zawadi ya maisha” kwa kufanikisha upandikizaji wa...</s>Matokeo ya awali ya uchaguzi Tanzania.</s>Kwa habari za kitaifa na kimataifa, biashara, burudani na michezo. Breaking News zote utazipata hapa. Tafadhali endelea kutembelea tovuti hii."
-# TEXT = "bürgerrecht hanseaten hanseatischer handel modalität wird in dieser auffassung bürgermeisterwahl hanseatische marine donaudampfschifffahrtskapitänunterhosenknopfloch als einstellung des sprechers zum. gesprochenen definiert, wobei mit einstellung die subjektive bewertung gemeint ist.  »linke woche der zukunft« \"Peter\" 'peter' „besser als im kino und auf cd“"
-# CC100 = "cc100/"
-
-
-@dataclass
-class Args:
-    language: str = dArg(default="de", help="Language identifier from CC100", aliases="--lg")
-    # seed: int = dArg(default=42, help="Seed to use for preprocessing.")
-    vocab_size: int = dArg(default=50_000)
-    train_file: str = dArg(default="")
-    lower_case: bool = dArg(default=False)
-    # tokenizer_name: str = dArg(required=True)
-    cc100: bool = dArg(default=True)
-    overwrite_cache: bool = dArg(default=False)
-    custom_tokenizers: list[str] = dArg(default_factory=list, aliases="--ct")
-    off_the_shelf_tokenizers: list[str] = dArg(default_factory=list, aliases="--otst")
+EXAMPLE_TEXT = "lorm ipsum."
 
 
 def decompose_tokenizer_spec(s: str):
@@ -156,23 +163,18 @@ def decompose_tokenizer_spec(s: str):
     return tokenizer_name, overwrite_cache
 
 
-def main():
-    (args,) = parse_args_into_dataclasses(dataclasses=(Args,))
-    print(args)
-
-    CC100_prefix = "cc100/" if args.cc100 else ""
-    # tokenizer = AutoTokenizer.from_pretrained("xlm-mlm-17-1280", use_fast=True)
-    # print(len(tokenizer.get_vocab()))
-    # train_file = f"./data/{CC100_prefix}{LG}/chunked256.{LG.split('-')[0]}.train.txt"
+def main(args: Args):
     if not os.path.exists(args.train_file):
         raise "Train file does not exist"
+
     data_files = {"train": args.train_file}
     datasets = load_dataset("text", data_files=data_files)
 
-    tokenizer_lg_tag = f"{'cc100-' if args.cc100 else ''}{args.language}"
-    
-    global TEXT
-    TEXT = get_training_corpus(datasets, batch_size=1, cutoff=10).__next__()[0]
+    tokenizer_lg_tag = f"{args.prefix}{args.language}"
+
+    global EXAMPLE_TEXT
+    EXAMPLE_TEXT = get_training_corpus(datasets, batch_size=1, cutoff=10).__next__()[0]
+
     for tokenizer_spec in args.off_the_shelf_tokenizers:
         tokenizer_name, _ = decompose_tokenizer_spec(tokenizer_spec)
         transformers_tokenizer(
@@ -192,6 +194,7 @@ def main():
                 vocab_size=args.vocab_size,
                 lower_case=args.lower_case,
                 overwrite_cache=overwrite_cache,
+                training_cutoff=args.training_cutoff,
             )
         else:
             transformers_tokenizer(
@@ -202,8 +205,11 @@ def main():
                 lower_case=args.lower_case,
                 adapt=True,
                 overwrite_cache=overwrite_cache,
+                training_cutoff=args.training_cutoff,
             )
 
 
 if __name__ == "__main__":
-    main()
+    args = dargparse(Args)
+    print(args)
+    main(args)
