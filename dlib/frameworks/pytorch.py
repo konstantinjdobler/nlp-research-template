@@ -6,7 +6,7 @@ import torch
 from loguru import logger
 
 
-def get_num_gpus(gpu_specifier):
+def get_num_devices(gpu_specifier):
     num_gpus = 1
     if gpu_specifier == -1:
         num_gpus = torch.cuda.device_count()

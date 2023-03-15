@@ -15,10 +15,13 @@ from pytorch_lightning.loggers.wandb import WandbLogger
 from pytorch_lightning.strategies.ddp import DDPStrategy
 from transformers import AutoTokenizer, PreTrainedModel, PreTrainedTokenizer
 
-from dlib.frameworks.lightning import CUDAMetricsCallback
+from dlib.frameworks.lightning import (
+    CUDAMetricsCallback,
+    do_not_use_slurm_multiprocessing,
+)
 from dlib.frameworks.pytorch import (
     get_effective_batch_size_per_step,
-    get_num_gpus,
+    get_num_devices,
     get_rank,
     set_torch_file_sharing_strategy_to_system,
 )
@@ -71,7 +74,7 @@ class TrainingArgs:
         aliases=["--lang", "--lg", "-l"],
     )
     max_sequence_length: int = dArg(
-        default=256, help="Sequence length for dataset tokenization.", aliases=["--max_seq_length", "--block_size"]
+        default=512, help="Sequence length for dataset tokenization.", aliases=["--max_seq_length", "--block_size"]
     )
     overwrite_data_cache: bool = dArg(default=False, help="Overwrite the cached preprocessed datasets or not.", aliases="--odc")
     conserve_disk_space: bool = dArg(default=False, help="Cleanup cache files whenever possible to save disk space.")
@@ -85,35 +88,48 @@ class TrainingArgs:
     distributed_strategy: Literal["ddp", "ddp_smart", "ddp_spawn", "ddp_fork", "dp", None] = dArg(
         default="ddp_smart", help="Distributed training strategy to use.", aliases=["--dist_strategy", "--ds"]
     )
-    devices: int | None = dArg(default=None, aliases=["--gpus", "--cpus", "--tpus"])
-    workers: int = dArg(default=4, help="Number of workers for dataloader.", aliases="-w")
+    devices: int | None = dArg(
+        default=None,
+        aliases=["--gpus", "--cpus", "--tpus"],
+        help="Number of devices to use for distributed training. If -1, will use all available devices.",
+    )
+    workers: int = dArg(
+        default=4, help="Number of workers for dataloaders. *Every device* weill use that many workers.", aliases="-w"
+    )
     preprocessing_workers: int = dArg(
-        default=1,
+        default=4,
         help="Number of workers for preprocessing the datasets. Cached datasets are only valid for the same number of preprocessing workers.",
         aliases="--pw",
     )
-    precision: Literal[8, 16, "bf16", "tf32", 32] = dArg(
+    precision: Literal[16, "bf16", 32] = dArg(
         default=32,
         help="Floating point precision to use during training. Might require specific hardware.",
     )
-    compile: bool = dArg(default=False, help="Whether to compile the model with using `torch.compile`. Requires torch>=1.14")
+    compile: bool = dArg(default=False, help="Whether to compile the model with using `torch.compile`. Requires torch>=2.0")
 
     ####### General training ###########
-    training_goal: int = dArg(default=50_000, help="Number K samples to train for.", aliases="--tg")
-    val_frequency: int = dArg(default=1000, help="Do validation every K samples.", aliases="--vfq")
-    val_before_training: bool = dArg(default=False, help="Run one validation epoch before training.")
+    training_goal: int = dArg(default=10_000, help="Number K samples to train for.", aliases="--tg")
+    val_frequency: float = dArg(
+        default=0.05, help="Do validation every K samples. If <1, compute as fraction of training_goal", aliases="--vfq"
+    )
+    model_log_frequency: float = dArg(
+        default=0.1, help="Log a model checkpoint every K samples. If <1, compute as fraction of training_goal", aliases="--mfq"
+    )
+    val_before_training: bool = dArg(default=True, help="Run one validation epoch before training.")
     batch_size_per_device: int = dArg(
         default=8,
-        help="Batch size per device. If --effective_batch_size is specified, this is the maximum batch size per device.",
+        help="Batch size per device. If --effective_batch_size is specified, this is the maximum batch size per device (you should test when you cannot get larger without CUDA OOM errors.).",
         aliases=["--batch_size_per_gpu", "-b"],
     )
     effective_batch_size: int | None = dArg(
         default=None,
-        help="If set, try to auto-infer batch_size_per_device and gradient_accumulation_steps based on number of GPUs given by --gpus.",
+        help="If set, try to auto-infer batch_size_per_device and gradient_accumulation_steps based on number of devices given by --devices.",
         aliases=["--eb"],
     )
     learning_rate: float = dArg(default=5e-5, aliases="--lr")
-    lr_warmup: int = dArg(default=4000, help="Number of K samples to do a learning rate warmup.")
+    lr_warmup: float = dArg(
+        default=0.1, help="Number of K samples to do a learning rate warmup. If <1, compute as fraction of training_goal."
+    )
     lr_schedule: Choice["cosine", "linear", "reduce_on_plateau", "constant", "cosine_with_restarts", "polynomial"] = dArg(
         default="cosine", help="Learning rate schedule."
     )
@@ -129,6 +145,19 @@ class TrainingArgs:
     from_scratch_embeddings: bool = dArg(
         default=False, help="Do not use pre-trained weights to intialize the token embeddings."
     )
+
+    def __post_init__(self):
+        if self.distributed_strategy is None:
+            self.devices = None
+        elif self.devices is None:
+            self.distributed_strategy = None
+
+        if self.val_frequency < 1:
+            self.val_frequency = int(self.training_goal * self.val_frequency)
+        if self.model_log_frequency < 1:
+            self.model_log_frequency = int(self.training_goal * self.model_log_frequency)
+        if self.lr_warmup < 1:
+            self.lr_warmup = int(self.training_goal * self.lr_warmup)
 
 
 @dataclass
@@ -147,21 +176,21 @@ class MiscArgs:
     )
 
 
-def main():
-    parsed_arg_groups = dargparse(dataclasses=(TrainingArgs, MiscArgs))
-
+def main(parsed_arg_groups: tuple[TrainingArgs, MiscArgs]):
     args, misc_args = parsed_arg_groups
+
+    ################ Apply fixes ##############
+    do_not_use_slurm_multiprocessing()
+    if misc_args.too_many_open_files_fix:
+        logger.info("Setting torch sharing strategy to 'file_system'")
+        set_torch_file_sharing_strategy_to_system()
+
+    ############# Seed & print args ##############
     misc_args.seed = seed_everything(workers=True, seed=misc_args.seed)
     current_process_rank = get_rank()
     if current_process_rank == 0:
         for arg_group in parsed_arg_groups:
             logger.info(arg_group)
-
-    ################ Apply fixes ##############
-    if misc_args.too_many_open_files_fix:
-        logger.info("Setting torch sharing strategy to 'file_system'")
-        set_torch_file_sharing_strategy_to_system()
-    os.environ["TOKENIZERS_PARALLELISM"] = "true"  # only relevant when tokenized dataset has not been cached yet
 
     ############# Construct W&B Logger ##############
     if misc_args.offline or misc_args.fast_dev_run or args.data_preprocessing_only:
@@ -186,17 +215,17 @@ def main():
 
     #### Calculate effective batch size / gradient accumulation steps ####
     ACCELERATOR = args.accelerator.upper()
-    num_gpus = get_num_gpus(args.devices)
+    num_devices = get_num_devices(args.devices)
     if args.effective_batch_size:
         logger.info(f"Trying to auto-infer settings for effective batch size {args.effective_batch_size}...")
         (
             args.batch_size_per_device,
             args.gradient_accumulation_steps,
             effective_batch_size_per_step,
-        ) = infer_batch_size_per_device(num_gpus, args.effective_batch_size, args.batch_size_per_device)
+        ) = infer_batch_size_per_device(num_devices, args.effective_batch_size, args.batch_size_per_device)
 
         logger.info(
-            f"Using effective batch size {args.effective_batch_size} with {num_gpus} {ACCELERATOR}s, "
+            f"Using effective batch size {args.effective_batch_size} with {num_devices} {ACCELERATOR}s, "
             f"{args.batch_size_per_device} batch size per {ACCELERATOR} and "
             f"{args.gradient_accumulation_steps} gradient accumulation steps."
         )
@@ -207,7 +236,7 @@ def main():
         args.effective_batch_size = effective_batch_size_per_step * args.gradient_accumulation_steps
         logger.info(
             f"Effective batch size {args.effective_batch_size} based on specified args"
-            f"{num_gpus} {ACCELERATOR}s, {args.batch_size_per_device} batch size per {ACCELERATOR} and"
+            f"{num_devices} {ACCELERATOR}s, {args.batch_size_per_device} batch size per {ACCELERATOR} and"
             f"{args.gradient_accumulation_steps} gradient accumulation steps."
         )
 
@@ -228,6 +257,7 @@ def main():
     args.val_frequency = int(
         args.val_frequency * KSAMPLES / effective_batch_size_per_step
     )  # val_frequency in lightning is every forward pass NOT optmization step
+    args.model_log_frequency = int(args.model_log_frequency * KSAMPLES / args.effective_batch_size)
     args.lr_warmup = int(args.lr_warmup * KSAMPLES / args.effective_batch_size)
 
     tokenizer: PreTrainedTokenizer = AutoTokenizer.from_pretrained(
@@ -239,9 +269,8 @@ def main():
         filename="snap-{step}-ksamples-{progress/ksamples:.2f}-loss-{val/loss:.2f}",
         monitor="val/loss",
         mode="min",
-        # save_last=True,
         auto_insert_metric_name=False,
-        every_n_train_steps=5 * val_frequency_in_optimization_steps,  # don't save on every val epoch
+        every_n_train_steps=args.model_log_frequency,
     )
     wandb_disk_cleanup_callback = WandbCleanupDiskAndCloudSpaceCallback(cleanup_local=True, cleanup_online=False, size_limit=20)
 
@@ -332,30 +361,37 @@ def main():
         print(val_result)
 
     logger.info(f"Rank {current_process_rank} | Starting training...")
-    trainer.fit(model, dm, ckpt_path=args.resume_training and args.checkpoint_path)
+    try:
+        trainer.fit(model, dm, ckpt_path=args.resume_training and args.checkpoint_path)
 
-    # Validate after training has finished
-    trainer.validate(model, dm)
+        logger.success("Fit complete, starting validation...")
+        # Validate after training has finished
+        trainer.validate(model, dm)
+    finally:
+        if current_process_rank == 0:
+            logger.info("Trying to save checkpoint....")
 
-    if current_process_rank == 0:
-        logger.info("Trying to save checkpoint....")
+            save_path = str(Path(checkpoint_callback.dirpath) / "last_model_ckpt.ckpt")
+            trainer.save_checkpoint(save_path)
 
-        save_path = str(Path(checkpoint_callback.dirpath) / "last_model_ckpt.ckpt")
-        trainer.save_checkpoint(save_path)
-        artifact = wandb.Artifact(name=f"model-{wandb_logger.experiment.id}", type="model")
-        artifact.add_file(save_path, name="model.ckpt")
+            logger.info("Collecting PL checkpoint for wandb...")
+            artifact = wandb.Artifact(name=f"model-{wandb_logger.experiment.id}", type="model")
+            artifact.add_file(save_path, name="model.ckpt")
 
-        # Also save raw huggingface checkpoint, so that we do not need to use lightning and the current code structure to load the weights
-        raw_huggingface_model: PreTrainedModel = trainer.lightning_module.model
-        save_path = str(Path(checkpoint_callback.dirpath) / "raw_huggingface")
-        raw_huggingface_model.save_pretrained(save_path)
-        artifact.add_dir(save_path, name="raw_huggingface")
+            logger.info('Collecting "raw" HF checkpoint for wandb...')
+            # Also save raw huggingface checkpoint, so that we do not need to use lightning and the current code structure to load the weights
+            raw_huggingface_model: PreTrainedModel = trainer.lightning_module.model
+            save_path = str(Path(checkpoint_callback.dirpath) / "raw_huggingface")
+            raw_huggingface_model.save_pretrained(save_path)
+            artifact.add_dir(save_path, name="raw_huggingface")
 
-        aliases = ["train_end", "latest"]
-        wandb_logger.experiment.log_artifact(artifact, aliases=aliases)
+            logger.info("Pushing to wandb...")
+            aliases = ["train_end", "latest"]
+            wandb_logger.experiment.log_artifact(artifact, aliases=aliases)
 
-        logger.success("Saving finished!")
+            logger.success("Saving finished!")
 
 
 if __name__ == "__main__":
-    main()
+    parsed_arg_groups = dargparse(dataclasses=(TrainingArgs, MiscArgs))
+    main(parsed_arg_groups)

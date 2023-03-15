@@ -176,7 +176,7 @@ def main(args: Args):
     f = chunking_f if args.chunking else clean_f
 
     if args.stream:
-        # dataset.columns_names is not available for streaming datasets
+        # dataset.columns_names is not available for streaming datasets #TODO: this is fixed in the current master version of datasets
         cols = ["text"]
         if args.dataset == "mc4":
             cols.extend(["timestamp", "url"])
@@ -194,9 +194,10 @@ def main(args: Args):
 
     logger.info("Shuffling and splitting into sets...")
     if args.stream:
-        # careful here, this would not truly shuffle the data, only samples within a buffer
-        # Take care of true shuffling in the Dataloader
-        # dataset = dataset.shuffle(seed=42, buffer_size=50_000)
+        # Careful here, this does not truly shuffle ALL the data by default, only samples within a buffer
+        # You might have to adjust the buffer_size here depending on memory limits of your machine
+        # Then take care of true shuffling in the Dataloader
+        dataset = dataset.shuffle(seed=42, buffer_size=args.max_train_size)
 
         dev_paragraphs = dataset.take(args.dev_size)
         dataset = dataset.skip(args.dev_size)

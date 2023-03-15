@@ -18,7 +18,7 @@ WANDB_ENTITY = "<your entity>"
 
 if WANDB_ENTITY == "<your entity>" or WANDB_PROJECT == "<your project>":
     logger.warning(
-        "dLib error: You need to specify WANDB_ENTITY and WANDB_PROJECT in dlib/frameworks/wandb.py when using the wandb module."
+        "dlib error: You need to specify WANDB_ENTITY and WANDB_PROJECT in dlib/frameworks/wandb.py when using the wandb module."
     )
 
 
