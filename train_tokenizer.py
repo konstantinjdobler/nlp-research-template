@@ -25,7 +25,11 @@ class Args:
     training_cutoff: int = dArg(default=50_000_000, help="Cutoff tokenizer training after that many samples.")
     language: str = dArg(default="de", help="Language identifier. Just used for naming.", aliases="--lg")
     prefix: str = dArg(default="", help="Prefix to prepend to the tokenizer name.")
-    vocab_size: int = dArg(default=50_000)
+    vocab_size: int = dArg(
+        default=50_048,
+        help="Vocab size for the tokenizer. Consider setting to a multiple of 64 for best usage of hardware accelerators.",
+        aliases="--vs",
+    )
     lower_case: bool = dArg(default=False)
     overwrite_cache: bool = dArg(default=False)
     custom_tokenizers: list[str] = dArg(
