@@ -8,11 +8,10 @@ channels:
   - nodefaults
 dependencies:
   - python=3.10 # or don't specify the version and use latest stable
-  # NOTE: using nightly builds can make lockfiles outdated when the nightly build changes - but it's the way we get pytorch 2.0 right now
-  - pytorch-nightly::pytorch>=2.0 # or don't specify the version and use latest stable
+  - pytorch::pytorch>=2.0 # or don't specify the version and use latest stable
   # CUDA only on linux and windows
-  - pytorch-nightly::pytorch-cuda=11.8 # [linux]
-  - pytorch-nightly::pytorch-cuda=11.8 # [win]
+  - pytorch::pytorch-cuda=11.8 # [linux]
+  - pytorch::pytorch-cuda=11.8 # [win]
   - dargparser
   - wandb
   - pytorch-lightning
