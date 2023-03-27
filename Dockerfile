@@ -1,4 +1,4 @@
-# This Dockerfile produces a container with all dependencies installed into a environment called "research"
+# This Dockerfile produces a container with all dependencies installed into an environment called "research"
 # Additionally, the container has a full-fledged micromamba installation, which is a faster drop-in replacement for conda
 # When inside the container, you can install additional dependencies with `conda install <package>`, e.g. `conda install scipy`
 # The actual installation is done by micromamba, we have simply provided an alias to link the conda command to micromamba
@@ -58,7 +58,7 @@ CMD ["/bin/bash"]
 
 # Install gcc (necessary for .compile() with PyTorch 2.0)
 USER root
-RUN yum install -y gcc && yum clean all
+RUN yum install -y gcc gcc-c++ && yum clean all
 # give user permission to gcc
 RUN chown $MAMBA_USER:$MAMBA_USER /usr/bin/gcc
 USER $MAMBA_USER
