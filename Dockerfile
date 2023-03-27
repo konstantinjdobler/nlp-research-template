@@ -56,6 +56,13 @@ CMD ["/bin/bash"]
 ######### Adding micromamba stops here #############
 ####################################################
 
+# Install gcc (necessary for .compile() with PyTorch 2.0)
+USER root
+RUN yum install -y gcc && yum clean all
+# give user permission to gcc
+RUN chown $MAMBA_USER:$MAMBA_USER /usr/bin/gcc
+USER $MAMBA_USER
+
 ARG TARGETOS TARGETARCH TARGETPLATFORM
 COPY --chown=$MAMBA_USER:$MAMBA_USER conda-lock.yml /locks/conda-lock.yml
 # HACK: overwrite generic lockfile if TARGETARCH=ppc64le, otherwise ${TARGETARCH}.conda-lock.yml will not exist
