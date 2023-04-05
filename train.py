@@ -6,7 +6,7 @@ from typing import Literal
 
 import torch
 import wandb
-from dargparser import Choice, dArg, dargparse
+from dargparser import dArg, dargparse
 from loguru import logger
 from pytorch_lightning import Trainer, seed_everything
 from pytorch_lightning.callbacks import LearningRateMonitor
@@ -41,20 +41,24 @@ from src.model import BasicLM
 class TrainingArgs:
     model_name_or_path: str = dArg(
         default="roberta-base",
-        help="HuggingFace model identifier. This is used to construct the model architecture and load pretrained weights if not specified otherwise",
+        help="HuggingFace model identifier. This is used to construct the model architecture and load pretrained weights if not specified otherwise.",
         aliases="--model",
     )
     language_modeling_strategy: Literal["mlm", "clm"] = dArg(
-        default="mlm", help="Whether to train a masked language model or a causal language model."
+        default="mlm",
+        help="Whether to train a masked language model or a causal language model.",
     )
     resume_training: bool = dArg(
-        default=False, help="Whether to resume training form checkpoint or only load the weights.", aliases="--resume"
+        default=False,
+        help="Whether to resume training form checkpoint or only load the weights.",
+        aliases="--resume",
     )
     checkpoint_path: str | None = dArg(
         default=None,
-        help="Path to a saved PyTorch Lightning checkpoint. You can use wandb:<wandb-run-id> syntax to load a checkpoint from W&B.",
+        help="Path to a saved pytorch-lightning checkpoint. Use the wandb:<wandb-run-id> syntax to load a checkpoint from W&B.",
         aliases="--checkpoint",
     )
+    hf_hack: str | None = dArg(default=None, help="HuggingFace hack to use.")
     tokenizer_path: str | None = dArg(
         default=None,
         help="Path to a directory containing a saved Huggingface PreTrainedTokenizer.",
@@ -74,7 +78,9 @@ class TrainingArgs:
         aliases=["--lang", "--lg", "-l"],
     )
     max_sequence_length: int = dArg(
-        default=512, help="Sequence length for dataset tokenization.", aliases=["--max_seq_length", "--block_size"]
+        default=512,
+        help="Sequence length for dataset tokenization.",
+        aliases=["--max_seq_length", "--block_size"],
     )
     overwrite_data_cache: bool = dArg(default=False, help="Overwrite the cached preprocessed datasets or not.", aliases="--odc")
     conserve_disk_space: bool = dArg(default=False, help="Cleanup cache files whenever possible to save disk space.")
@@ -86,7 +92,9 @@ class TrainingArgs:
         help='Hardware accelerator to use. Can be gpu, cpu, tpu, mps, etc. If "auto", will auto-detect available hardware accelerator.',
     )
     distributed_strategy: Literal["ddp", "ddp_smart", "ddp_spawn", "ddp_fork", "dp", None] = dArg(
-        default="ddp_smart", help="Distributed training strategy to use.", aliases=["--dist_strategy", "--ds"]
+        default="ddp_smart",
+        help="Distributed training strategy to use.",
+        aliases=["--dist_strategy", "--ds"],
     )
     devices: int | None = dArg(
         default=None,
@@ -94,26 +102,35 @@ class TrainingArgs:
         help="Number of devices to use for distributed training. If -1, will use all available devices.",
     )
     workers: int = dArg(
-        default=4, help="Number of workers for dataloaders. *Every device* weill use that many workers.", aliases="-w"
+        default=4,
+        help="Number of workers for dataloaders. *Every device* weill use that many workers.",
+        aliases="-w",
     )
     preprocessing_workers: int = dArg(
         default=4,
         help="Number of workers for preprocessing the datasets. Cached datasets are only valid for the same number of preprocessing workers.",
         aliases="--pw",
     )
-    precision: Literal[16, "bf16", 32] = dArg(
+    precision: Literal["16-mixed", "bf16-mixed", 32] = dArg(
         default=32,
         help="Floating point precision to use during training. Might require specific hardware.",
     )
-    compile: bool = dArg(default=False, help="Whether to compile the model with using `torch.compile`. Requires torch>=2.0")
+    compile: bool = dArg(
+        default=False,
+        help="Whether to compile the model with using `torch.compile`. Requires torch>=2.0",
+    )
 
     ####### General training ###########
     training_goal: int = dArg(default=10_000, help="Number K samples to train for.", aliases="--tg")
     val_frequency: float = dArg(
-        default=0.05, help="Do validation every K samples. If <1, compute as fraction of training_goal", aliases="--vfq"
+        default=0.05,
+        help="Do validation every K samples. If <1, compute as fraction of training_goal",
+        aliases="--vfq",
     )
     model_log_frequency: float = dArg(
-        default=0.1, help="Log a model checkpoint every K samples. If <1, compute as fraction of training_goal", aliases="--mfq"
+        default=0.1,
+        help="Log a model checkpoint every K samples. If <1, compute as fraction of training_goal",
+        aliases="--mfq",
     )
     val_before_training: bool = dArg(default=True, help="Run one validation epoch before training.")
     batch_size_per_device: int = dArg(
@@ -128,9 +145,10 @@ class TrainingArgs:
     )
     learning_rate: float = dArg(default=5e-5, aliases="--lr")
     lr_warmup: float = dArg(
-        default=0.1, help="Number of K samples to do a learning rate warmup. If <1, compute as fraction of training_goal."
+        default=0.1,
+        help="Number of K samples to do a learning rate warmup. If <1, compute as fraction of training_goal.",
     )
-    lr_schedule: Choice["cosine", "linear", "reduce_on_plateau", "constant", "cosine_with_restarts", "polynomial"] = dArg(
+    lr_schedule: Literal["cosine", "linear", "reduce_on_plateau", "constant", "cosine_with_restarts", "polynomial"] = dArg(
         default="cosine", help="Learning rate schedule."
     )
     weight_decay: float = dArg(default=0.0, aliases="--wd")
@@ -176,6 +194,7 @@ class MiscArgs:
     )
 
 
+@logger.catch(reraise=True)
 def main(parsed_arg_groups: tuple[TrainingArgs, MiscArgs]):
     args, misc_args = parsed_arg_groups
 
@@ -225,7 +244,8 @@ def main(parsed_arg_groups: tuple[TrainingArgs, MiscArgs]):
         ) = infer_batch_size_per_device(num_devices, args.effective_batch_size, args.batch_size_per_device)
 
         logger.info(
-            f"Using effective batch size {args.effective_batch_size} with {num_devices} {ACCELERATOR}s, "
+            f"Using effective batch size {args.effective_batch_size}"
+            f"with {num_devices} {ACCELERATOR}s, "
             f"{args.batch_size_per_device} batch size per {ACCELERATOR} and "
             f"{args.gradient_accumulation_steps} gradient accumulation steps."
         )
@@ -236,7 +256,8 @@ def main(parsed_arg_groups: tuple[TrainingArgs, MiscArgs]):
         args.effective_batch_size = effective_batch_size_per_step * args.gradient_accumulation_steps
         logger.info(
             f"Effective batch size {args.effective_batch_size} based on specified args"
-            f"{num_devices} {ACCELERATOR}s, {args.batch_size_per_device} batch size per {ACCELERATOR} and"
+            f"{num_devices} {ACCELERATOR}s, "
+            f"{args.batch_size_per_device} batch size per {ACCELERATOR} and"
             f"{args.gradient_accumulation_steps} gradient accumulation steps."
         )
 
@@ -256,7 +277,7 @@ def main(parsed_arg_groups: tuple[TrainingArgs, MiscArgs]):
     val_frequency_in_optimization_steps = int(args.val_frequency * KSAMPLES / args.effective_batch_size)
     args.val_frequency = int(
         args.val_frequency * KSAMPLES / effective_batch_size_per_step
-    )  # val_frequency in lightning is every forward pass NOT optmization step
+    )  # val_frequency in lightning is every forward pass NOT optimization step
     args.model_log_frequency = int(args.model_log_frequency * KSAMPLES / args.effective_batch_size)
     args.lr_warmup = int(args.lr_warmup * KSAMPLES / args.effective_batch_size)
 
@@ -307,9 +328,24 @@ def main(parsed_arg_groups: tuple[TrainingArgs, MiscArgs]):
     else:
         model = BasicLM(training_args=args, **model_extra_args)
 
+    if args.train_only_embeddings:
+        if get_rank() == 0:
+            logger.info("Training only embedding layer")
+        for param in model.model.parameters():
+            param.requires_grad = False
+        model.model.get_input_embeddings().weight.requires_grad = True
+
+    if args.from_scratch_embeddings:
+        torch.nn.init.xavier_uniform_(model.model.get_input_embeddings().weight)
+        # torch.nn.init.normal_(self.model.get_input_embeddings().weight) # alternative
+
     if current_process_rank == 0:
         model.on_train_start = lambda: logger.info(
-            f"Total training steps: {args.training_goal} | LR warmup steps: {args.lr_warmup} | Validation Frequency: {val_frequency_in_optimization_steps} | Effective batch size: {args.effective_batch_size}"
+            f"Total training steps: {args.training_goal} | "
+            f"LR warmup steps: {args.lr_warmup} | "
+            f"Validation Frequency: {val_frequency_in_optimization_steps} | "
+            f"Model Log Frequencey: {args.model_log_frequency} | "
+            f"Effective batch size: {args.effective_batch_size}"
         )
     wandb_logger.watch(model, log="gradients", log_freq=500, log_graph=False)
 
@@ -321,7 +357,7 @@ def main(parsed_arg_groups: tuple[TrainingArgs, MiscArgs]):
                 f"The current torch version ({torch.__version__}) does not have support for compile."
                 "Please install torch >= 2.0 or disable compile."
             )
-        model = torch.compile(model)
+        model.model = torch.compile(model.model)
 
     #################### Construct dataloaders & trainer #################
     dm = LMDataModule(training_args=args, misc_args=misc_args)
@@ -352,6 +388,7 @@ def main(parsed_arg_groups: tuple[TrainingArgs, MiscArgs]):
         gradient_clip_val=args.gradient_clipping,
         accumulate_grad_batches=args.gradient_accumulation_steps,
         fast_dev_run=misc_args.fast_dev_run,
+        inference_mode=not args.compile,  # inference_mode for val/test and PyTorch 2.0 compiler don't like each other
     )
 
     if args.val_before_training:
@@ -362,11 +399,13 @@ def main(parsed_arg_groups: tuple[TrainingArgs, MiscArgs]):
 
     logger.info(f"Rank {current_process_rank} | Starting training...")
     try:
-        trainer.fit(model, dm, ckpt_path=args.resume_training and args.checkpoint_path)
+        trainer.fit(model, dm, ckpt_path=args.checkpoint_path if args.resume_training else None)
 
         logger.success("Fit complete, starting validation...")
         # Validate after training has finished
         trainer.validate(model, dm)
+    except Exception as e:
+        logger.exception(e)
     finally:
         if current_process_rank == 0:
             logger.info("Trying to save checkpoint....")
@@ -379,7 +418,7 @@ def main(parsed_arg_groups: tuple[TrainingArgs, MiscArgs]):
             artifact.add_file(save_path, name="model.ckpt")
 
             logger.info('Collecting "raw" HF checkpoint for wandb...')
-            # Also save raw huggingface checkpoint, so that we do not need to use lightning and the current code structure to load the weights
+            # Also save raw huggingface checkpoint, so that we don't need lightning and the current code structure to load the weights
             raw_huggingface_model: PreTrainedModel = trainer.lightning_module.model
             save_path = str(Path(checkpoint_callback.dirpath) / "raw_huggingface")
             raw_huggingface_model.save_pretrained(save_path)

@@ -62,17 +62,6 @@ class BasicLM(pl.LightningModule):
         if self.args.from_scratch and get_rank() == 0:
             logger.info("Training from scratch without pretrained weights")
 
-        if self.args.train_only_embeddings:
-            if get_rank() == 0:
-                logger.info("Training only embedding layer")
-            for param in self.model.parameters():
-                param.requires_grad = False
-            self.model.get_input_embeddings().weight.requires_grad = True
-
-        if self.args.from_scratch_embeddings:
-            nn.init.xavier_uniform_(self.model.get_input_embeddings().weight)
-            # nn.init.normal_(self.model.get_input_embeddings().weight) # alternative
-
         self.effective_batch_size_per_step = effective_batch_size_per_step
 
     def forward(self, x):

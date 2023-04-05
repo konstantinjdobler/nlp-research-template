@@ -67,6 +67,7 @@ class LMDataModule(pl.LightningDataModule):
             tokenized_data_dir,
             f"{self.args.train_file}.{self.args.dev_file}.seq_len_{self.args.max_sequence_length}.tokenizer_{tokenizer_name}.tokenize_fn_hash_{tokenize_fn_hash}",
         )
+        logger.info(f"Rank {get_rank()} | Cache path: {cache_path}")
 
         with main_process_first(description="Loading dataset", active=self.args.devices is not None, time_buffer_after_main=5):
             if os.path.exists(cache_path):
@@ -83,7 +84,7 @@ class LMDataModule(pl.LightningDataModule):
                 tokenizer=tokenizer, mlm=False, pad_to_multiple_of=pad_to_multiple_of
             )
         elif self.args.language_modeling_strategy == "mlm":
-            pad_to_multiple_of = 8 if self.args.precision in [16, "bf16"] else None
+            pad_to_multiple_of = 8 if self.args.precision in ["16-mixed", "bf16-mixed"] else None
             DataCollatorClass = DataCollatorForWholeWordMask if self.whole_word_masking else DataCollatorForLanguageModeling
             data_collator = DataCollatorClass(
                 tokenizer=tokenizer, mlm=True, mlm_probability=self.mlm_probability, pad_to_multiple_of=pad_to_multiple_of
