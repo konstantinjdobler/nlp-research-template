@@ -7,12 +7,11 @@ from typing import Literal
 import torch
 import wandb
 from dargparser import dArg, dargparse
+from lightning import Trainer, seed_everything
+from lightning.pytorch.callbacks import LearningRateMonitor, ModelCheckpoint
+from lightning.pytorch.loggers import WandbLogger
+from lightning.pytorch.strategies import DDPStrategy
 from loguru import logger
-from pytorch_lightning import Trainer, seed_everything
-from pytorch_lightning.callbacks import LearningRateMonitor
-from pytorch_lightning.callbacks.model_checkpoint import ModelCheckpoint
-from pytorch_lightning.loggers.wandb import WandbLogger
-from pytorch_lightning.strategies.ddp import DDPStrategy
 from transformers import AutoTokenizer, PreTrainedModel, PreTrainedTokenizer
 
 from dlib.frameworks.lightning import (
@@ -41,7 +40,7 @@ from src.model import BasicLM
 class TrainingArgs:
     model_name_or_path: str = dArg(
         default="roberta-base",
-        help="HuggingFace model identifier. This is used to construct the model architecture and load pretrained weights if not specified otherwise.",
+        help="HuggingFace model identifier. This is used to construct the model architecture and load pretrained weights if not specified otherwise.",  # noqa: E501
         aliases="--model",
     )
     language_modeling_strategy: Literal["mlm", "clm"] = dArg(
@@ -55,10 +54,9 @@ class TrainingArgs:
     )
     checkpoint_path: str | None = dArg(
         default=None,
-        help="Path to a saved pytorch-lightning checkpoint. Use the wandb:<wandb-run-id> syntax to load a checkpoint from W&B.",
+        help="Path to a saved pytorch-lightning checkpoint. Use the wandb:<wandb-run-id> syntax to load a checkpoint from W&B.",  # noqa: E501
         aliases="--checkpoint",
     )
-    hf_hack: str | None = dArg(default=None, help="HuggingFace hack to use.")
     tokenizer_path: str | None = dArg(
         default=None,
         help="Path to a directory containing a saved Huggingface PreTrainedTokenizer.",
@@ -66,7 +64,7 @@ class TrainingArgs:
     )
     data_dir: str = dArg(
         default="./data",
-        help="Path to the data directory. By default, expects a train.txt and dev.txt file inside the directory.",
+        help="Path to the data directory. By default, expects a train.txt and dev.txt file inside the directory.",  # noqa: E501
         aliases="-d",
     )
     train_file: str = dArg(default="train.txt")
@@ -96,18 +94,18 @@ class TrainingArgs:
 
     ####### Hardware ###########
     accelerator: Literal["gpu", "cpu", "tpu", "mps", "auto"] = dArg(
-        default="gpu",
-        help='Hardware accelerator to use. Can be gpu, cpu, tpu, mps, etc. If "auto", will auto-detect available hardware accelerator.',
+        default="auto",
+        help='Hardware accelerator to use. Can be gpu, cpu, tpu, mps, etc. If "auto", will auto-detect available hardware accelerator.',  # noqa: E501
     )
-    distributed_strategy: Literal["ddp", "ddp_smart", "ddp_spawn", "ddp_fork", "dp", None] = dArg(
-        default="ddp_smart",
+    distributed_strategy: Literal["ddp", "ddp_smart", "ddp_spawn", "ddp_fork", "dp", "auto"] = dArg(
+        default="auto",
         help="Distributed training strategy to use.",
         aliases=["--dist_strategy", "--ds"],
     )
     devices: int | None = dArg(
         default=None,
         aliases=["--gpus", "--cpus", "--tpus"],
-        help="Number of devices to use for distributed training. If -1, will use all available devices.",
+        help="Number of devices to use for distributed training. If -1, will use all available devices.",  # noqa: E501
     )
     workers: int = dArg(
         default=4,
@@ -116,7 +114,7 @@ class TrainingArgs:
     )
     preprocessing_workers: int = dArg(
         default=4,
-        help="Number of workers for preprocessing the datasets. Cached datasets are only valid for the same number of preprocessing workers.",
+        help="Number of workers for preprocessing the datasets. Cached datasets are only valid for the same number of preprocessing workers.",  # noqa: E501
         aliases="--pw",
     )
     precision: Literal["16-mixed", "bf16-mixed", 32] = dArg(
@@ -143,18 +141,18 @@ class TrainingArgs:
     val_before_training: bool = dArg(default=True, help="Run one validation epoch before training.")
     batch_size_per_device: int = dArg(
         default=8,
-        help="Batch size per device. If --effective_batch_size is specified, this is the maximum batch size per device (you should test when you cannot get larger without CUDA OOM errors.).",
+        help="Batch size per device. If --effective_batch_size is specified, this is the maximum batch size per device (you should test when you cannot get larger without CUDA OOM errors.).",  # noqa: E501
         aliases=["--batch_size_per_gpu", "-b"],
     )
     effective_batch_size: int | None = dArg(
         default=None,
-        help="If set, try to auto-infer batch_size_per_device and gradient_accumulation_steps based on number of devices given by --devices.",
+        help="If set, try to auto-infer batch_size_per_device and gradient_accumulation_steps based on number of devices given by --devices.",  # noqa: E501
         aliases=["--eb"],
     )
     learning_rate: float = dArg(default=5e-5, aliases="--lr")
     lr_warmup: float = dArg(
         default=0.1,
-        help="Number of K samples to do a learning rate warmup. If <1, compute as fraction of training_goal.",
+        help="Number of K samples to do a learning rate warmup. If <1, compute as fraction of training_goal.",  # noqa: E501
     )
     lr_schedule: Literal[
         "cosine", "linear", "reduce_on_plateau", "constant", "cosine_with_restarts", "polynomial"
@@ -164,7 +162,7 @@ class TrainingArgs:
     gradient_accumulation_steps: int = dArg(default=1, aliases=["--gas", "--accum"])
     train_only_embeddings: bool = dArg(
         default=False,
-        help="Train only the embedding layer of the model and keep the other transformer layers frozen.",
+        help="Train only the embedding layer of the model and keep the other transformer layers frozen.",  # noqa: E501
         aliases="--only_embeddings",
     )
     from_scratch: bool = dArg(
@@ -205,7 +203,7 @@ class MiscArgs:
     wandb_project: str = dArg(default=None)
     too_many_open_files_fix: bool = dArg(
         default=False,
-        help='Apply fix to circumvent "Too many open files" error caused by the PyTorch Dataloader when using many workers or large batches.',
+        help='Apply fix to circumvent "Too many open files" error caused by the PyTorch Dataloader when using many workers or large batches.',  # noqa: E501
         aliases="--open_files_fix",
     )
 
@@ -386,7 +384,7 @@ def main(parsed_arg_groups: tuple[TrainingArgs, MiscArgs]):
     if args.compile:
         if not hasattr(torch, "compile"):
             raise RuntimeError(
-                f"The current torch version ({torch.__version__}) does not have support for compile."
+                f"The current torch version ({torch.__version__}) does not have support for compile."  # noqa: E501
                 "Please install torch >= 2.0 or disable compile."
             )
         model.model = torch.compile(model.model)
@@ -420,11 +418,11 @@ def main(parsed_arg_groups: tuple[TrainingArgs, MiscArgs]):
         gradient_clip_val=args.gradient_clipping,
         accumulate_grad_batches=args.gradient_accumulation_steps,
         fast_dev_run=misc_args.fast_dev_run,
-        inference_mode=not args.compile,  # inference_mode for val/test and PyTorch 2.0 compiler don't like each other
+        inference_mode=not args.compile,  # inference_mode for val/test and PyTorch 2.0 compiler don't like each other  # noqa: E501
     )
 
     if args.val_before_training:
-        # TODO: we could use a new trainer with Trainer(devices=1, num_nodes=1) to prevent samples from possibly getting replicated with DistributedSampler here.
+        # TODO: we could use a new trainer with Trainer(devices=1, num_nodes=1) to prevent samples from possibly getting replicated with DistributedSampler here.  # noqa: E501
         logger.info(f"Rank {current_process_rank} | Validation before training...")
         val_result = trainer.validate(model, dm)
         print(val_result)
@@ -450,7 +448,7 @@ def main(parsed_arg_groups: tuple[TrainingArgs, MiscArgs]):
             artifact.add_file(save_path, name="model.ckpt")
 
             logger.info('Collecting "raw" HF checkpoint for wandb...')
-            # Also save raw huggingface checkpoint, so that we don't need lightning and the current code structure to load the weights
+            # Also save raw huggingface checkpoint, so that we don't need lightning and the current code structure to load the weights  # noqa: E501
             raw_huggingface_model: PreTrainedModel = trainer.lightning_module.model
             save_path = str(Path(checkpoint_callback.dirpath) / "raw_huggingface")
             raw_huggingface_model.save_pretrained(save_path)
