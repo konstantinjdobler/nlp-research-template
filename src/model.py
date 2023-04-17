@@ -101,7 +101,9 @@ class BasicLM(L.LightningModule):
         named_parameters = list(self.model.named_parameters())
 
         ### Filter out parameters that are not optimized (requires_grad == False)
-        named_parameters = list(filter(lambda named_param: named_param[1].requires_grad, named_parameters))
+        named_parameters = list(
+            filter(lambda named_param: named_param[1].requires_grad, named_parameters)
+        )
 
         ### Do not include LayerNorm and bias terms for weight decay https://forums.fast.ai/t/is-weight-decay-applied-to-the-bias-term/73212/6
         no_decay = ["bias", "LayerNorm.bias", "LayerNorm.weight"]
@@ -123,7 +125,9 @@ class BasicLM(L.LightningModule):
         )
 
         if self.args.lr_schedule == "reduce_on_plateau":
-            scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, patience=5, verbose=True)
+            scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
+                optimizer, patience=5, verbose=True
+            )
             if self.args.lr_warmup > 0:  # Wrap ReduceLROnPlateau to enable LR warmup
                 scheduler = GradualWarmupScheduler(
                     optimizer,

@@ -46,11 +46,14 @@ class Args:
     out_dir: str = dArg(default="./data/mc4/")
     processes: int = dArg(default=4)
     chunking: bool = dArg(
-        default=False, help="Whether to split the text into chunks of a fixed number of tokens or return one document per line."
+        default=False,
+        help="Whether to split the text into chunks of a fixed number of tokens or return one document per line.",
     )
     chunking_max_len: int = dArg(default=512)
     sep_token: str = dArg(default="</s><s>")
-    split: str = dArg(default="train", help="Select percentage of dataset like so: --split=train[:50%]")
+    split: str = dArg(
+        default="train", help="Select percentage of dataset like so: --split=train[:50%]"
+    )
     conserve_disk_space: bool = dArg(default=False, aliases="--disk_space")
     pre_discard_factor: float = dArg(default=None)
     stream: bool = dArg(
@@ -84,14 +87,22 @@ def main(args: Args):
 
     ##### Load dataset #####
     if args.dataset == "mc4":
-        dataset = load_dataset("mc4", args.language, split=args.split, cache_dir=tmp_cache_dir, streaming=args.stream)
+        dataset = load_dataset(
+            "mc4", args.language, split=args.split, cache_dir=tmp_cache_dir, streaming=args.stream
+        )
     elif args.dataset == "cc100":
         if args.stream:
             logger.warning("Streaming mode for cc100 might lose some sample documents.")
             # Streaming mode is not trivial for cc100, since we need to group samples into documents.
             # To lose no samples, we need to set batch_size=len(dataset) but this is not possible for IteratableDataset.
             # We can accept loosing some samples by setting batch_size to a large number.
-        dataset = load_dataset("cc100", lang=args.language, split=args.split, cache_dir=tmp_cache_dir, streaming=args.stream)
+        dataset = load_dataset(
+            "cc100",
+            lang=args.language,
+            split=args.split,
+            cache_dir=tmp_cache_dir,
+            streaming=args.stream,
+        )
 
     ##### For CC100: Group individual lines into documents #####
     if args.dataset == "cc100":
@@ -122,7 +133,9 @@ def main(args: Args):
         if args.pre_discard_factor:
             assert args.max_train_size is not None
             if dataset_len > args.pre_discard_factor * args.max_train_size:
-                dataset = dataset.shuffle(seed=42).select(range(int(args.pre_discard_factor * args.max_train_size)))
+                dataset = dataset.shuffle(seed=42).select(
+                    range(int(args.pre_discard_factor * args.max_train_size))
+                )
 
     logger.info(dataset)
 
@@ -137,7 +150,9 @@ def main(args: Args):
         left_over_lines = []
         RE_COMBINE_WHITESPACE = re.compile(r"\s+")
 
-        batch_tokens = reference_tokenizer(examples["text"], add_special_tokens=False, return_offsets_mapping=True)
+        batch_tokens = reference_tokenizer(
+            examples["text"], add_special_tokens=False, return_offsets_mapping=True
+        )
         for token_offsets, example in zip(batch_tokens["offset_mapping"], examples["text"]):
             if example == "\n":
                 continue
@@ -177,7 +192,9 @@ def main(args: Args):
 
         return {
             "processed_text": [
-                RE_COMBINE_WHITESPACE.sub(" ", example).strip() + "\n" for example in examples["text"] if example != "\n"
+                RE_COMBINE_WHITESPACE.sub(" ", example).strip() + "\n"
+                for example in examples["text"]
+                if example != "\n"
             ]
         }
 
@@ -251,13 +268,19 @@ def main(args: Args):
     chunking_prefix = f"chunked{args.chunking_max_len}." if args.chunking else ""
     os.makedirs(str(output_dir), exist_ok=True)
     with open(str(output_dir / f"{chunking_prefix}train.txt"), "w+") as file:
-        file.writelines((t["processed_text"] for t in tqdm(train_paragraphs, desc="Writing train data...")))
+        file.writelines(
+            (t["processed_text"] for t in tqdm(train_paragraphs, desc="Writing train data..."))
+        )
 
     with open(str(output_dir / f"{chunking_prefix}dev.txt"), "w+") as file:
-        file.writelines((t["processed_text"] for t in tqdm(dev_paragraphs, desc="Writing dev data...")))
+        file.writelines(
+            (t["processed_text"] for t in tqdm(dev_paragraphs, desc="Writing dev data..."))
+        )
 
     with open(str(output_dir / f"{chunking_prefix}test.txt"), "w+") as file:
-        file.writelines((t["processed_text"] for t in tqdm(test_paragraphs, desc="Writing test data...")))
+        file.writelines(
+            (t["processed_text"] for t in tqdm(test_paragraphs, desc="Writing test data..."))
+        )
 
 
 if __name__ == "__main__":

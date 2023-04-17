@@ -37,7 +37,9 @@ class LMDataModule(L.LightningDataModule):
         self.args = training_args
         self.misc_args = misc_args
         self.data_dir = (
-            Path(training_args.data_dir) / training_args.language if training_args.language else Path(training_args.data_dir)
+            Path(training_args.data_dir) / training_args.language
+            if training_args.language
+            else Path(training_args.data_dir)
         )
         train_file, dev_file = (
             self.data_dir / self.args.train_file,
@@ -70,15 +72,21 @@ class LMDataModule(L.LightningDataModule):
         )
         logger.info(f"Rank {get_rank()} | Cache path: {cache_path}")
 
-        with main_process_first(description="Loading dataset", active=get_num_devices(self.args.devices) > 1):
+        with main_process_first(
+            description="Loading dataset", active=get_num_devices(self.args.devices) > 1
+        ):
             if os.path.exists(cache_path):
                 logger.success(f"Rank {get_rank()} | Found cached processed dataset: {cache_path}")
                 processed_datasets = datasets.load_from_disk(cache_path)
-                logger.success(f"Rank {get_rank()} | Loaded cached processed dataset: {processed_datasets}")
+                logger.success(
+                    f"Rank {get_rank()} | Loaded cached processed dataset: {processed_datasets}"
+                )
             else:
                 processed_datasets = self.load_and_process_dataset(tokenizer, tokenized_data_dir)
                 logger.info(f"Saving dataset to {cache_path}...")
-                processed_datasets.save_to_disk(cache_path, num_proc=self.args.preprocessing_workers)
+                processed_datasets.save_to_disk(
+                    cache_path, num_proc=self.args.preprocessing_workers
+                )
 
         if self.args.language_modeling_strategy == "clm":
             data_collator = DataCollatorForLanguageModeling(
@@ -86,7 +94,11 @@ class LMDataModule(L.LightningDataModule):
             )
         elif self.args.language_modeling_strategy == "mlm":
             pad_to_multiple_of = 8 if self.args.precision in ["16-mixed", "bf16-mixed"] else None
-            DataCollatorClass = DataCollatorForWholeWordMask if self.whole_word_masking else DataCollatorForLanguageModeling
+            DataCollatorClass = (
+                DataCollatorForWholeWordMask
+                if self.whole_word_masking
+                else DataCollatorForLanguageModeling
+            )
             data_collator = DataCollatorClass(
                 tokenizer=tokenizer,
                 mlm=True,
@@ -109,7 +121,9 @@ class LMDataModule(L.LightningDataModule):
         data_files = {"train": self.train_file, "dev": self.dev_file}
 
         logger.info("Loading raw dataset...")
-        tmp_load_dataset_cache_dir = tempfile.mkdtemp(dir=tokenized_data_dir) if self.args.conserve_disk_space else None
+        tmp_load_dataset_cache_dir = (
+            tempfile.mkdtemp(dir=tokenized_data_dir) if self.args.conserve_disk_space else None
+        )
         train_dev_datasets = datasets.load_dataset(
             extension,
             data_files=data_files,
@@ -131,7 +145,9 @@ class LMDataModule(L.LightningDataModule):
                 train_dev_datasets=train_dev_datasets,
             )
         else:
-            processed_datasets = self.process_dataset_in_chunks(tokenizer=tokenizer, train_dev_datasets=train_dev_datasets)
+            processed_datasets = self.process_dataset_in_chunks(
+                tokenizer=tokenizer, train_dev_datasets=train_dev_datasets
+            )
 
         # processed_datasets["train"] = processed_datasets["train"].shuffle(seed=self.misc_args.seed) # <-- this is bad, triggers super expensive .flatten_indices op when .save_to_disk
         logger.success(
@@ -190,7 +206,9 @@ class LMDataModule(L.LightningDataModule):
                 f"seq_len_{self.args.max_sequence_length}.tokenize_fn_hash_{tokenize_fn_hash}.{self.args.dev_file}",
             ),
         }
-        cache_exists = os.path.exists(final_tokenized_filenames["train"]) and os.path.exists(final_tokenized_filenames["dev"])
+        cache_exists = os.path.exists(final_tokenized_filenames["train"]) and os.path.exists(
+            final_tokenized_filenames["dev"]
+        )
         logger.debug(
             f"Rank {get_rank()} | {tokenizer_path} | Cache exists: {cache_exists} | {'Loading cache...' if cache_exists else 'Starting dataset tokenization...'}"
         )
@@ -215,7 +233,9 @@ class LMDataModule(L.LightningDataModule):
             num_workers=self.args.workers,
             persistent_workers=True,  #  # https://discuss.pytorch.org/t/what-are-the-dis-advantages-of-persistent-workers/102110/10
             pin_memory=True,
-            worker_init_fn=set_torch_file_sharing_strategy_to_system if self.misc_args.too_many_open_files_fix else None,
+            worker_init_fn=set_torch_file_sharing_strategy_to_system
+            if self.misc_args.too_many_open_files_fix
+            else None,
             shuffle=True,
         )
         return DataLoader(self.train_dataset, collate_fn=self.data_collator, **common_args)
@@ -226,7 +246,9 @@ class LMDataModule(L.LightningDataModule):
             num_workers=self.args.workers,
             persistent_workers=True,  #  # https://discuss.pytorch.org/t/what-are-the-dis-advantages-of-persistent-workers/102110/10
             pin_memory=True,
-            worker_init_fn=set_torch_file_sharing_strategy_to_system if self.misc_args.too_many_open_files_fix else None,
+            worker_init_fn=set_torch_file_sharing_strategy_to_system
+            if self.misc_args.too_many_open_files_fix
+            else None,
         )
         return DataLoader(self.dev_dataset, collate_fn=self.data_collator, **common_args)
 

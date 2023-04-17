@@ -71,7 +71,9 @@ class TrainingArgs:
     )
     train_file: str = dArg(default="train.txt")
     dev_file: str = dArg(default="dev.txt")
-    line_by_line: bool = dArg(default=False, help="Process dataset line by line instead of chunking.")
+    line_by_line: bool = dArg(
+        default=False, help="Process dataset line by line instead of chunking."
+    )
     language: str = dArg(
         default=None,
         help="If specified, the data is expected to lie inside a subdirectory with this name.",
@@ -82,9 +84,15 @@ class TrainingArgs:
         help="Sequence length for dataset tokenization.",
         aliases=["--max_seq_length", "--block_size"],
     )
-    overwrite_data_cache: bool = dArg(default=False, help="Overwrite the cached preprocessed datasets or not.", aliases="--odc")
-    conserve_disk_space: bool = dArg(default=False, help="Cleanup cache files whenever possible to save disk space.")
-    data_preprocessing_only: bool = dArg(default=False, help="Exit the script after data preprocessing. Do not start training.")
+    overwrite_data_cache: bool = dArg(
+        default=False, help="Overwrite the cached preprocessed datasets or not.", aliases="--odc"
+    )
+    conserve_disk_space: bool = dArg(
+        default=False, help="Cleanup cache files whenever possible to save disk space."
+    )
+    data_preprocessing_only: bool = dArg(
+        default=False, help="Exit the script after data preprocessing. Do not start training."
+    )
 
     ####### Hardware ###########
     accelerator: Literal["gpu", "cpu", "tpu", "mps", "auto"] = dArg(
@@ -148,9 +156,9 @@ class TrainingArgs:
         default=0.1,
         help="Number of K samples to do a learning rate warmup. If <1, compute as fraction of training_goal.",
     )
-    lr_schedule: Literal["cosine", "linear", "reduce_on_plateau", "constant", "cosine_with_restarts", "polynomial"] = dArg(
-        default="cosine", help="Learning rate schedule."
-    )
+    lr_schedule: Literal[
+        "cosine", "linear", "reduce_on_plateau", "constant", "cosine_with_restarts", "polynomial"
+    ] = dArg(default="cosine", help="Learning rate schedule.")
     weight_decay: float = dArg(default=0.0, aliases="--wd")
     gradient_clipping: float | None = dArg(default=None, aliases="--gc")
     gradient_accumulation_steps: int = dArg(default=1, aliases=["--gas", "--accum"])
@@ -159,7 +167,9 @@ class TrainingArgs:
         help="Train only the embedding layer of the model and keep the other transformer layers frozen.",
         aliases="--only_embeddings",
     )
-    from_scratch: bool = dArg(default=False, help="Do not use pre-trained weights to intialize the model.")
+    from_scratch: bool = dArg(
+        default=False, help="Do not use pre-trained weights to intialize the model."
+    )
     from_scratch_embeddings: bool = dArg(
         default=False, help="Do not use pre-trained weights to intialize the token embeddings."
     )
@@ -181,10 +191,16 @@ class TrainingArgs:
 @dataclass
 class MiscArgs:
     seed: int | None = None
-    force_deterministic: bool = dArg(default=False, help="Force PyTorch operations to be deterministic.")
+    force_deterministic: bool = dArg(
+        default=False, help="Force PyTorch operations to be deterministic."
+    )
     offline: bool = dArg(default=False, help="Disable W&B online syncing.")
-    fast_dev_run: bool = dArg(default=False, help="Do fast run through training and validation with reduced sizes.")
-    wandb_run_name: str | None = dArg(default=None, help="Run name for the W&B online UI.", aliases="-n")
+    fast_dev_run: bool = dArg(
+        default=False, help="Do fast run through training and validation with reduced sizes."
+    )
+    wandb_run_name: str | None = dArg(
+        default=None, help="Run name for the W&B online UI.", aliases="-n"
+    )
     wandb_tags: list[str] = dArg(default=[])
     wandb_project: str = dArg(default=None)
     too_many_open_files_fix: bool = dArg(
@@ -218,9 +234,15 @@ def main(parsed_arg_groups: tuple[TrainingArgs, MiscArgs]):
     wandb_extra_args = dict(
         name=misc_args.wandb_run_name,
     )
-    if args.checkpoint_path and args.resume_training and check_checkpoint_path_for_wandb(args.checkpoint_path):
+    if (
+        args.checkpoint_path
+        and args.resume_training
+        and check_checkpoint_path_for_wandb(args.checkpoint_path)
+    ):
         logger.info("Resuming training from W&B")
-        wandb_extra_args = dict(id=check_checkpoint_path_for_wandb(args.checkpoint_path), resume="must")  # resume W&B run
+        wandb_extra_args = dict(
+            id=check_checkpoint_path_for_wandb(args.checkpoint_path), resume="must"
+        )  # resume W&B run
     else:
         args.resume_training = False
 
@@ -236,12 +258,16 @@ def main(parsed_arg_groups: tuple[TrainingArgs, MiscArgs]):
     ACCELERATOR = args.accelerator.upper()
     num_devices = get_num_devices(args.devices)
     if args.effective_batch_size:
-        logger.info(f"Trying to auto-infer settings for effective batch size {args.effective_batch_size}...")
+        logger.info(
+            f"Trying to auto-infer settings for effective batch size {args.effective_batch_size}..."
+        )
         (
             args.batch_size_per_device,
             args.gradient_accumulation_steps,
             effective_batch_size_per_step,
-        ) = infer_batch_size_per_device(num_devices, args.effective_batch_size, args.batch_size_per_device)
+        ) = infer_batch_size_per_device(
+            num_devices, args.effective_batch_size, args.batch_size_per_device
+        )
 
         logger.info(
             f"Using effective batch size {args.effective_batch_size}"
@@ -274,7 +300,9 @@ def main(parsed_arg_groups: tuple[TrainingArgs, MiscArgs]):
     args.training_goal = int(
         args.training_goal * KSAMPLES / args.effective_batch_size
     )  # Lightning does `gradient_accumulation_steps` many forward passes per step (step := optimization step aka backward pass)
-    val_frequency_in_optimization_steps = int(args.val_frequency * KSAMPLES / args.effective_batch_size)
+    val_frequency_in_optimization_steps = int(
+        args.val_frequency * KSAMPLES / args.effective_batch_size
+    )
     args.val_frequency = int(
         args.val_frequency * KSAMPLES / effective_batch_size_per_step
     )  # val_frequency in lightning is every forward pass NOT optimization step
@@ -293,10 +321,14 @@ def main(parsed_arg_groups: tuple[TrainingArgs, MiscArgs]):
         auto_insert_metric_name=False,
         every_n_train_steps=args.model_log_frequency,
     )
-    wandb_disk_cleanup_callback = WandbCleanupDiskAndCloudSpaceCallback(cleanup_local=True, cleanup_online=False, size_limit=20)
+    wandb_disk_cleanup_callback = WandbCleanupDiskAndCloudSpaceCallback(
+        cleanup_local=True, cleanup_online=False, size_limit=20
+    )
 
     ################# Construct model ##############
-    model_extra_args = dict(effective_batch_size_per_step=effective_batch_size_per_step, vocab_size=vocab_size)
+    model_extra_args = dict(
+        effective_batch_size_per_step=effective_batch_size_per_step, vocab_size=vocab_size
+    )
 
     # Resume from checkpoint if specified
     if args.checkpoint_path:

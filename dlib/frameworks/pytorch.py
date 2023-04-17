@@ -56,10 +56,14 @@ def main_process_first(description="", active=True, time_buffer_after_main: bool
             yield
         finally:
             if local_rank == 0:
-                logger.info(f"Main process | {description} | Done. Executing on parallel processes now...")
+                logger.info(
+                    f"Main process | {description} | Done. Executing on parallel processes now..."
+                )
                 torch.distributed.barrier()
                 if time_buffer_after_main:
-                    time_buffer_after_main = time_buffer_after_main if isinstance(time_buffer_after_main, int) else 30
+                    time_buffer_after_main = (
+                        time_buffer_after_main if isinstance(time_buffer_after_main, int) else 30
+                    )
                     sleep(time_buffer_after_main)  # Give other processes time to catch up
     else:
         yield

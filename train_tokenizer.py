@@ -22,8 +22,12 @@ from transformers import AutoTokenizer, XLMRobertaTokenizerFast
 @dataclass
 class Args:
     train_file: str
-    training_cutoff: int = dArg(default=50_000_000, help="Cutoff tokenizer training after that many samples.")
-    language: str = dArg(default="de", help="Language identifier. Just used for naming.", aliases="--lg")
+    training_cutoff: int = dArg(
+        default=50_000_000, help="Cutoff tokenizer training after that many samples."
+    )
+    language: str = dArg(
+        default="de", help="Language identifier. Just used for naming.", aliases="--lg"
+    )
     prefix: str = dArg(default="", help="Prefix to prepend to the tokenizer name.")
     vocab_size: int = dArg(
         default=50_048,
@@ -40,7 +44,9 @@ class Args:
         aliases="--ct",
     )
     off_the_shelf_tokenizers: list[str] = dArg(
-        default=[], help="A list of off-the-shelf HuggingFace tokenizers to compare against.", aliases="--otst"
+        default=[],
+        help="A list of off-the-shelf HuggingFace tokenizers to compare against.",
+        aliases="--otst",
     )
 
 
@@ -88,7 +94,9 @@ def transformers_tokenizer(
             tokenizer = AutoTokenizer.from_pretrained(cache_path)
         else:
             tokenizer = tokenizer.train_new_from_iterator(
-                get_training_corpus(datasets, cutoff=training_cutoff), vocab_size, lowercase=lower_case
+                get_training_corpus(datasets, cutoff=training_cutoff),
+                vocab_size,
+                lowercase=lower_case,
             )
             tokenizer.save_pretrained(cache_path)
     total_tokens, num_samples, total_chars = eval_tokenizer(datasets, tokenizer)
@@ -112,10 +120,16 @@ def bpe_huggingface_tokenizer(
         print("\n", "############# BPE ##############")
 
         # TODO: make normalization configurable
-        bpe_tokenizer = ByteLevelBPETokenizer(add_prefix_space=True, lowercase=lower_case)  # x unicode_normalizer="nfkc")
+        bpe_tokenizer = ByteLevelBPETokenizer(
+            add_prefix_space=True, lowercase=lower_case
+        )  # x unicode_normalizer="nfkc")
         # bpe_tokenizer.normalizer = normalizers.NFKC()
 
-        print(getattr(bpe_tokenizer, "normalizer", None), bpe_tokenizer.pre_tokenizer, bpe_tokenizer.post_processor)
+        print(
+            getattr(bpe_tokenizer, "normalizer", None),
+            bpe_tokenizer.pre_tokenizer,
+            bpe_tokenizer.post_processor,
+        )
         bpe_tokenizer.train_from_iterator(
             iterator=get_training_corpus(datasets, cutoff=training_cutoff),
             vocab_size=vocab_size,
