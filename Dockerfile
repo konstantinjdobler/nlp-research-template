@@ -80,8 +80,13 @@ RUN --mount=type=cache,target=${MAMBA_ROOT_PREFIX}/pkgs,id=conda-${TARGETPLATFOR
 ARG MAMBA_DOCKERFILE_ACTIVATE=1
 RUN micromamba config prepend channels conda-forge --env
 
-# Provide conda alias for micromamba
-RUN echo "alias conda=micromamba" >> ~/.bashrc
+# Install optional tricky pip dependencies that do not work with conda-lock
+# RUN micromamba run -n research pip install example-dependency --no-deps --no-cache-dir
+
+# provide conda alias for micromamba
+USER root
+RUN echo "alias conda=micromamba" >> /usr/local/bin/_activate_current_env.sh
+USER $MAMBA_USER
 
 # Use our environment as default
 ENV ENV_NAME=research

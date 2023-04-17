@@ -9,7 +9,7 @@ dependencies:
   - cudatoolkit=11.4 # OpenCE version 1.8
   - dargparser
   - wandb
-  - pytorch-lightning
+  - lightning
   - transformers
   - tokenizers
   - datasets

@@ -48,7 +48,7 @@ class Args:
     chunking: bool = dArg(
         default=False, help="Whether to split the text into chunks of a fixed number of tokens or return one document per line."
     )
-    chunking_max_len: int = dArg(default=256)
+    chunking_max_len: int = dArg(default=512)
     sep_token: str = dArg(default="</s><s>")
     split: str = dArg(default="train", help="Select percentage of dataset like so: --split=train[:50%]")
     conserve_disk_space: bool = dArg(default=False, aliases="--disk_space")
@@ -56,6 +56,10 @@ class Args:
     stream: bool = dArg(
         default=False,
         help="Couple with max_train_size to avoid having to load the entire dataset. Use streaming mode to load dataset and process dataset.",
+    )
+    stream_shuffle_buffer_size: int = dArg(
+        default=None,
+        help="Buffer size for shuffling datasets before splitting in streaming mode. The entire buffer will be downloaded before shuffling. If None, set to max_train_size.",
     )
 
 
@@ -78,16 +82,18 @@ def main(args: Args):
         tmp_cache_dir = os.path.join(args.out_dir, args.language, "tmp_download_cache")
         os.makedirs(tmp_cache_dir, exist_ok=True)
 
+    ##### Load dataset #####
     if args.dataset == "mc4":
         dataset = load_dataset("mc4", args.language, split=args.split, cache_dir=tmp_cache_dir, streaming=args.stream)
     elif args.dataset == "cc100":
         if args.stream:
             logger.warning("Streaming mode for cc100 might lose some sample documents.")
             # Streaming mode is not trivial for cc100, since we need to group samples into documents.
-            # To loose no samples, we need to set batch_size=len(dataset) but this si not possible for IteratableDataset.
+            # To lose no samples, we need to set batch_size=len(dataset) but this is not possible for IteratableDataset.
             # We can accept loosing some samples by setting batch_size to a large number.
         dataset = load_dataset("cc100", lang=args.language, split=args.split, cache_dir=tmp_cache_dir, streaming=args.stream)
 
+    ##### For CC100: Group individual lines into documents #####
     if args.dataset == "cc100":
 
         def document_grouping_f(examples: Dict[str, list[str]]):
@@ -108,6 +114,7 @@ def main(args: Args):
         dataset = dataset.map(document_grouping_f, **map_args)
         dataset = dataset.rename_column("docs", "text")
 
+    ##### If not streaming, optionally pre-discard parts of the dataset (for faster processing) #####
     if not args.stream:
         dataset_len = len(dataset)
         logger.info("Dataset len:", dataset_len)
@@ -119,6 +126,7 @@ def main(args: Args):
 
     logger.info(dataset)
 
+    #### Define processing functions ####
     if args.chunking:
         assert args.reference_tokenizer is not None
         reference_tokenizer = AutoTokenizer.from_pretrained(args.reference_tokenizer)
@@ -175,6 +183,7 @@ def main(args: Args):
 
     f = chunking_f if args.chunking else clean_f
 
+    ##### Process dataset #####
     if args.stream:
         # dataset.columns_names is not available for streaming datasets #TODO: this is fixed in the current master version of datasets
         cols = ["text"]
@@ -192,12 +201,13 @@ def main(args: Args):
         )
         logger.success("Processing finished!")
 
+    ##### Split into train/dev/test #####
     logger.info("Shuffling and splitting into sets...")
     if args.stream:
         # Careful here, this does not truly shuffle ALL the data by default, only samples within a buffer
         # You might have to adjust the buffer_size here depending on memory limits of your machine
         # Then take care of true shuffling in the Dataloader
-        dataset = dataset.shuffle(seed=42, buffer_size=args.max_train_size)
+        dataset = dataset.shuffle(seed=42, buffer_size=args.stream_shuffle_buffer_size)
 
         dev_paragraphs = dataset.take(args.dev_size)
         dataset = dataset.skip(args.dev_size)
@@ -235,6 +245,7 @@ def main(args: Args):
             if e.errno != errno.ENOENT:
                 raise
 
+    ##### Write to disk #####
     logger.info("Writing data...")
     output_dir = Path(args.out_dir) / args.language
     chunking_prefix = f"chunked{args.chunking_max_len}." if args.chunking else ""

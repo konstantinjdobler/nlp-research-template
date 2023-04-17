@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
-import pytorch_lightning as pl
+import lightning as L
 import torch
 from loguru import logger
 from torch import nn
@@ -28,7 +28,7 @@ class ModelArgs:
     adam_epsilon: float = 1e-8
 
 
-class BasicLM(pl.LightningModule):
+class BasicLM(L.LightningModule):
     def __init__(
         self,
         training_args: "TrainingArgs",  # do in string to remove dependency when loading.
@@ -74,7 +74,13 @@ class BasicLM(pl.LightningModule):
 
     def on_train_batch_end(self, outputs, batch, batch_idx, unused=0) -> None:
         self.hparams.ksamples_processed += self.effective_batch_size_per_step / 1000
-        self.log("progress/ksamples", self.hparams.ksamples_processed, rank_zero_only=True, on_step=True, on_epoch=False)
+        self.log(
+            "progress/ksamples",
+            self.hparams.ksamples_processed,
+            rank_zero_only=True,
+            on_step=True,
+            on_epoch=False,
+        )
 
     def validation_step(self, batch, batch_idx):
         loss = self.model(**batch).loss
@@ -94,7 +100,7 @@ class BasicLM(pl.LightningModule):
 
         named_parameters = list(self.model.named_parameters())
 
-        ### Filter out parameters that are not optmized (requires_grad == False)
+        ### Filter out parameters that are not optimized (requires_grad == False)
         named_parameters = list(filter(lambda named_param: named_param[1].requires_grad, named_parameters))
 
         ### Do not include LayerNorm and bias terms for weight decay https://forums.fast.ai/t/is-weight-decay-applied-to-the-bias-term/73212/6
@@ -120,7 +126,10 @@ class BasicLM(pl.LightningModule):
             scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, patience=5, verbose=True)
             if self.args.lr_warmup > 0:  # Wrap ReduceLROnPlateau to enable LR warmup
                 scheduler = GradualWarmupScheduler(
-                    optimizer, multiplier=1, total_epoch=self.args.lr_warmup, after_scheduler=scheduler
+                    optimizer,
+                    multiplier=1,
+                    total_epoch=self.args.lr_warmup,
+                    after_scheduler=scheduler,
                 )
             scheduler_config = {"frequency": self.args.val_frequency, "monitor": "train/loss"}
         else:
@@ -135,4 +144,7 @@ class BasicLM(pl.LightningModule):
             )
             scheduler_config = {"frequency": 1}
 
-        return {"optimizer": optimizer, "lr_scheduler": {"scheduler": scheduler, "interval": "step", **scheduler_config}}
+        return {
+            "optimizer": optimizer,
+            "lr_scheduler": {"scheduler": scheduler, "interval": "step", **scheduler_config},
+        }

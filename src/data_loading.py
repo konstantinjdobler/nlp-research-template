@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 import datasets
-import pytorch_lightning as pl
+import pytorch_lightning as L
 from loguru import logger
 from torch.utils.data.dataloader import DataLoader
 from transformers import DataCollatorForLanguageModeling
@@ -15,6 +15,7 @@ from transformers.data.data_collator import DataCollatorForWholeWordMask
 from transformers.models.auto.tokenization_auto import AutoTokenizer
 
 from dlib.frameworks.pytorch import (
+    get_num_devices,
     get_rank,
     main_process_first,
     set_torch_file_sharing_strategy_to_system,
@@ -24,7 +25,7 @@ if TYPE_CHECKING:
     from train import MiscArgs, TrainingArgs
 
 
-class LMDataModule(pl.LightningDataModule):
+class LMDataModule(L.LightningDataModule):
     def __init__(
         self,
         training_args: "TrainingArgs",
@@ -69,7 +70,7 @@ class LMDataModule(pl.LightningDataModule):
         )
         logger.info(f"Rank {get_rank()} | Cache path: {cache_path}")
 
-        with main_process_first(description="Loading dataset", active=self.args.devices is not None, time_buffer_after_main=5):
+        with main_process_first(description="Loading dataset", active=get_num_devices(self.args.devices) > 1):
             if os.path.exists(cache_path):
                 logger.success(f"Rank {get_rank()} | Found cached processed dataset: {cache_path}")
                 processed_datasets = datasets.load_from_disk(cache_path)
@@ -87,7 +88,10 @@ class LMDataModule(pl.LightningDataModule):
             pad_to_multiple_of = 8 if self.args.precision in ["16-mixed", "bf16-mixed"] else None
             DataCollatorClass = DataCollatorForWholeWordMask if self.whole_word_masking else DataCollatorForLanguageModeling
             data_collator = DataCollatorClass(
-                tokenizer=tokenizer, mlm=True, mlm_probability=self.mlm_probability, pad_to_multiple_of=pad_to_multiple_of
+                tokenizer=tokenizer,
+                mlm=True,
+                mlm_probability=self.mlm_probability,
+                pad_to_multiple_of=pad_to_multiple_of,
             )
 
         self.train_dataset = processed_datasets["train"]
@@ -120,14 +124,14 @@ class LMDataModule(pl.LightningDataModule):
         if self.args.conserve_disk_space:
             datasets.fingerprint.disable_caching()
 
-        os.environ["TOKENIZERS_PARALLELISM"] = "true"
         if self.args.line_by_line:
             processed_datasets = self.process_dataset_line_by_line(
-                tokenizer=tokenizer, tokenizer_path=self.tokenizer_path, train_dev_datasets=train_dev_datasets
+                tokenizer=tokenizer,
+                tokenizer_path=self.tokenizer_path,
+                train_dev_datasets=train_dev_datasets,
             )
         else:
             processed_datasets = self.process_dataset_in_chunks(tokenizer=tokenizer, train_dev_datasets=train_dev_datasets)
-        del os.environ["TOKENIZERS_PARALLELISM"]  # unset after tokenization is done
 
         # processed_datasets["train"] = processed_datasets["train"].shuffle(seed=self.misc_args.seed) # <-- this is bad, triggers super expensive .flatten_indices op when .save_to_disk
         logger.success(
@@ -149,7 +153,7 @@ class LMDataModule(pl.LightningDataModule):
         return processed_datasets
 
     def process_dataset_in_chunks(self, tokenizer, train_dev_datasets):
-        """Expects input data to be one document per line. Tokenizes the documents and splits into chunks of max_sequence_length."""
+        """Expects input data to be one document per line. Tokenizes the documents and splits into chunks of max_sequence_legth."""
         tokenized_datasets = train_dev_datasets.map(
             make_tokenize_function(tokenizer, max_seq_length=None, truncate=False),
             batched=True,

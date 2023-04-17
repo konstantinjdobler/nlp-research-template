@@ -4,12 +4,12 @@ import subprocess
 import threading
 from pathlib import Path
 
-import pytorch_lightning as pl
+import pytorch_lightning as L
 import wandb
+from lightning import Callback
+from lightning.pytorch.loggers import WandbLogger
+from lightning.pytorch.utilities import rank_zero_only
 from loguru import logger
-from pytorch_lightning import Callback
-from pytorch_lightning.loggers.wandb import WandbLogger
-from pytorch_lightning.utilities.distributed import rank_zero_only
 
 from ..frameworks.pytorch import get_rank
 
@@ -30,9 +30,13 @@ class MyWandbLogger(WandbLogger):
             checkpoint_callback.best_model_path: checkpoint_callback.best_model_score,
             **checkpoint_callback.best_k_models,
         }
-        checkpoints = sorted((Path(p).stat().st_mtime, p, s) for p, s in checkpoints.items() if Path(p).is_file())
+        checkpoints = sorted(
+            (Path(p).stat().st_mtime, p, s) for p, s in checkpoints.items() if Path(p).is_file()
+        )
         checkpoints = [
-            c for c in checkpoints if c[1] not in self._logged_model_time.keys() or self._logged_model_time[c[1]] < c[0]
+            c
+            for c in checkpoints
+            if c[1] not in self._logged_model_time.keys() or self._logged_model_time[c[1]] < c[0]
         ]
 
         # log iteratively all new checkpoints
@@ -55,7 +59,9 @@ class MyWandbLogger(WandbLogger):
                     if hasattr(checkpoint_callback, k)
                 },
             }
-            artifact = wandb.Artifact(name=f"model-{self.experiment.id}", type="model", metadata=metadata)
+            artifact = wandb.Artifact(
+                name=f"model-{self.experiment.id}", type="model", metadata=metadata
+            )
             artifact.add_file(p, name="model.ckpt")
             aliases = ["latest", "best"] if p == checkpoint_callback.best_model_path else ["latest"]
             self.experiment.log_artifact(artifact, aliases=aliases)
@@ -74,7 +80,7 @@ class WandbCleanupDiskAndCloudSpaceCallback(Callback):
         self.counter = 0
 
     @rank_zero_only
-    def on_validation_end(self, trainer: pl.Trainer, pl_module: pl.LightningModule) -> None:
+    def on_validation_end(self, trainer: L.Trainer, pl_module: L.LightningModule) -> None:
         if self.counter < self.backoff:
             self.counter += 1
             return
@@ -97,14 +103,22 @@ class WandbCleanupDiskAndCloudSpaceCallback(Callback):
         # Free up local wandb cache (This is often A LOT of memory)
         if self.cleanup_local:
             logger.info("Starting wandb artifact cache cleanup timeout")
-            cache_cleanup_callback = lambda: subprocess.run(["wandb", "artifact", "cache", "cleanup", f"{self.size_limit}GB"])
+            cache_cleanup_callback = lambda: subprocess.run(
+                ["wandb", "artifact", "cache", "cleanup", f"{self.size_limit}GB"]
+            )
             timer = threading.Timer(
                 120.0, cache_cleanup_callback
             )  # Delay cleanupcall to avoid cleaning a temp file from the ModelCheckpoint hook that is needed to upload current checkpoint
             timer.start()
 
 
-def check_for_wandb_checkpoint_and_download_if_necessary(checkpoint_path: str, wandb_run_instance) -> str:
+def check_for_wandb_checkpoint_and_download_if_necessary(
+    checkpoint_path: str,
+    wandb_run_instance,
+    wandb_entity=None,
+    wandb_project=None,
+    suffix="/model.ckpt",
+) -> str:
     """
     Checks the provided checkpoint_path for the wandb regex r\"wandb:.*\".
     If matched, download the W&B artifact indicated by the id in the provided string and return its path.
@@ -115,7 +129,9 @@ def check_for_wandb_checkpoint_and_download_if_necessary(checkpoint_path: str, w
         if get_rank() == 0:
             logger.info("Downloading W&B checkpoint...")
         wandb_model_id = checkpoint_path.split(":")[1]
-        model_tag = checkpoint_path.split(":")[2] if len(checkpoint_path.split(":")) == 3 else "latest"
+        model_tag = (
+            checkpoint_path.split(":")[2] if len(checkpoint_path.split(":")) == 3 else "latest"
+        )
 
         """
         Only the main process should download the artifact in DDP. We add this environment variable as a guard. 
@@ -124,8 +140,10 @@ def check_for_wandb_checkpoint_and_download_if_necessary(checkpoint_path: str, w
         if os.environ.get(f"DLIB_ARTIFACT_PATH_{wandb_model_id}_{model_tag}"):
             checkpoint_path = os.environ[f"DLIB_ARTIFACT_PATH_{wandb_model_id}_{model_tag}"]
         else:
-            artifact = wandb_run_instance.use_artifact(f"{WANDB_ENTITY}/{WANDB_PROJECT}/model-{wandb_model_id}:{model_tag}")
-            checkpoint_path = artifact.download() + "/model.ckpt"
+            artifact = wandb_run_instance.use_artifact(
+                f"{wandb_entity or WANDB_ENTITY}/{wandb_project or WANDB_PROJECT}/model-{wandb_model_id}:{model_tag}"
+            )
+            checkpoint_path = artifact.download() + suffix
             logger.info(f"Path of downloaded W&B artifact: {checkpoint_path}")
             os.environ[f"DLIB_ARTIFACT_PATH_{wandb_model_id}_{model_tag}"] = checkpoint_path
     return checkpoint_path
@@ -137,3 +155,52 @@ def check_checkpoint_path_for_wandb(checkpoint_path: str):
         wandb_model_id = checkpoint_path.split(":")[1]
         return wandb_model_id
     return None
+
+
+def patch_transformers_wandb_callback():
+    """Patch the transformers wandb integration to use the run id instead of the run name to name artifacts."""
+    import numbers
+    import tempfile
+
+    from transformers.integrations import WandbCallback
+
+    def patched_on_train_end(self, args, state, control, model=None, tokenizer=None, **kwargs):
+        if self._wandb is None:
+            return
+        if (
+            self._log_model in ("end", "checkpoint")
+            and self._initialized
+            and state.is_world_process_zero
+        ):
+            from transformers import Trainer
+
+            fake_trainer = Trainer(args=args, model=model, tokenizer=tokenizer)
+            with tempfile.TemporaryDirectory() as temp_dir:
+                fake_trainer.save_model(temp_dir)
+                metadata = (
+                    {
+                        k: v
+                        for k, v in dict(self._wandb.summary).items()
+                        if isinstance(v, numbers.Number) and not k.startswith("_")
+                    }
+                    if not args.load_best_model_at_end
+                    else {
+                        f"eval/{args.metric_for_best_model}": state.best_metric,
+                        "train/total_floss": state.total_flos,
+                    }
+                )
+                logger.info("Logging model artifacts. ...")
+                # Always use run id
+                model_name = (
+                    f"model-{self._wandb.run.id}"
+                    if (True or args.run_name is None or args.run_name == args.output_dir)
+                    else f"model-{self._wandb.run.name}"
+                )
+                artifact = self._wandb.Artifact(name=model_name, type="model", metadata=metadata)
+                for f in Path(temp_dir).glob("*"):
+                    if f.is_file():
+                        with artifact.new_file(f.name, mode="wb") as fa:
+                            fa.write(f.read_bytes())
+                self._wandb.run.log_artifact(artifact)
+
+    WandbCallback.on_train_end = patched_on_train_end

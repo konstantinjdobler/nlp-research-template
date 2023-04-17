@@ -273,7 +273,7 @@ def main(parsed_arg_groups: tuple[TrainingArgs, MiscArgs]):
     KSAMPLES = 1000
     args.training_goal = int(
         args.training_goal * KSAMPLES / args.effective_batch_size
-    )  # Lightning does `gradient_accumulation_steps` many forward passes per step (step := optimization step)
+    )  # Lightning does `gradient_accumulation_steps` many forward passes per step (step := optimization step aka backward pass)
     val_frequency_in_optimization_steps = int(args.val_frequency * KSAMPLES / args.effective_batch_size)
     args.val_frequency = int(
         args.val_frequency * KSAMPLES / effective_batch_size_per_step
