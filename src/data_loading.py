@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 import datasets
-import pytorch_lightning as L
+import lightning as L
 from loguru import logger
 from torch.utils.data.dataloader import DataLoader
 from transformers import DataCollatorForLanguageModeling
