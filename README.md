@@ -88,6 +88,7 @@ srun ... --container-image konstantinjdobler/nlp-research-template:torch2.1.0-cu
 
 This uses [`enroot`](https://github.com/NVIDIA/enroot) under the hood to import your docker image and run your code inside the container. See the [`pyxis` documentation](https://github.com/NVIDIA/pyxis) for more options, such as `--container-mounts` or `--container-writable`.
 
+If you want to run an interactive session with bash don't forget the `--pty` flag, otherwise the environment won't be activated properly.
 </p>
 </details>
 
