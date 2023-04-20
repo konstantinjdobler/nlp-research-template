@@ -4,7 +4,7 @@
 # The actual installation is done by micromamba, we have simply provided an alias to link the conda command to micromamba
 
 # Load micromamba container to copy from later
-FROM --platform=linux/amd64 mambaorg/micromamba:1.3.1 as micromamba
+FROM --platform=$TARGETPLATFORM mambaorg/micromamba:1.3.1 as micromamba
 
 # -----------------
 # base image for amd64
