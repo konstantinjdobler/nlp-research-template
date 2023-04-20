@@ -62,6 +62,8 @@ RUN apt-get update && apt-get install -y gcc && apt-get clean all
 # give user permission to gcc
 RUN chown $MAMBA_USER:$MAMBA_USER /usr/bin/gcc
 USER $MAMBA_USER
+## Additional for development with devcontainer
+RUN apt-get update && apt-get install -y openssh-client nano
 
 ARG TARGETOS TARGETARCH TARGETPLATFORM
 COPY --chown=$MAMBA_USER:$MAMBA_USER conda-lock.yml /locks/conda-lock.yml
@@ -86,9 +88,6 @@ RUN micromamba config prepend channels conda-forge --env
 # provide conda alias for micromamba
 USER root
 RUN echo "alias conda=micromamba" >> /usr/local/bin/_activate_current_env.sh
-
-## Additional for development
-RUN apt-get update && apt-get install -y openssh-client nano
 
 USER $MAMBA_USER
 
