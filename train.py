@@ -10,14 +10,15 @@ from dargparser import dArg, dargparse
 from lightning import Trainer, seed_everything
 from lightning.pytorch.callbacks import LearningRateMonitor, ModelCheckpoint
 from lightning.pytorch.loggers import WandbLogger
+from lightning.pytorch.plugins.environments import (
+    LightningEnvironment,
+    SLURMEnvironment,
+)
 from lightning.pytorch.strategies import DDPStrategy
 from loguru import logger
 from transformers import AutoTokenizer, PreTrainedModel, PreTrainedTokenizer
 
-from dlib.frameworks.lightning import (
-    CUDAMetricsCallback,
-    do_not_use_slurm_multiprocessing,
-)
+from dlib.frameworks.lightning import CUDAMetricsCallback
 from dlib.frameworks.pytorch import (
     get_effective_batch_size_per_step,
     get_num_devices,
@@ -213,7 +214,6 @@ def main(parsed_arg_groups: tuple[TrainingArgs, MiscArgs]):
     args, misc_args = parsed_arg_groups
 
     ################ Apply fixes ##############
-    do_not_use_slurm_multiprocessing()
     if misc_args.too_many_open_files_fix:
         logger.info("Setting torch sharing strategy to 'file_system'")
         set_torch_file_sharing_strategy_to_system()
@@ -403,6 +403,11 @@ def main(parsed_arg_groups: tuple[TrainingArgs, MiscArgs]):
         else args.distributed_strategy
     )
 
+    plugins = None
+    if SLURMEnvironment.detect():
+        logger.info("Disabling SLURMEnvironment (we use lightning's native DDP launcher)")
+        plugins = [LightningEnvironment()]
+
     # Initialize trainer
     trainer = Trainer(
         max_steps=args.training_goal,
@@ -413,6 +418,7 @@ def main(parsed_arg_groups: tuple[TrainingArgs, MiscArgs]):
         logger=wandb_logger,
         deterministic=misc_args.force_deterministic,
         callbacks=callbacks,
+        plugins=plugins,
         enable_checkpointing=True,
         precision=args.precision,
         gradient_clip_val=args.gradient_clipping,

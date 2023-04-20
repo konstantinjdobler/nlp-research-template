@@ -71,13 +71,3 @@ class CUDAMetricsCallback(Callback):
 
     def root_gpu(self, trainer: "Trainer") -> int:
         return trainer.strategy.root_device.index
-
-
-def do_not_use_slurm_multiprocessing() -> None:
-    """
-    Monkey-patch SLURMEnvironment to never detect SLURM - we want to use lightning's logic to launch parallel processes.
-    Instead of applying this patch, you can also use --job-name=bash in the srun command but this might create other problems.
-    """
-    from lightning_fabric.plugins.environments.slurm import SLURMEnvironment
-
-    SLURMEnvironment.detect = lambda: False
