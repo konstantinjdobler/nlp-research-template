@@ -87,7 +87,9 @@ class LMDataModule(L.LightningDataModule):
                 logger.success(
                     f"Rank {get_rank()} | Loaded cached processed dataset: {processed_datasets}"
                 )
-            elif len(maybe_cache_path_match_list) > 0 and os.path.exists(maybe_cache_path_match_list[0]):
+            elif len(maybe_cache_path_match_list) > 0 and os.path.exists(
+                maybe_cache_path_match_list[0]
+            ):
                 logger.warning(
                     f"Rank {get_rank()} | Did not find cached processed dataset: {cache_path} but {maybe_cache_path_match_list[0]}. The tokenize function hash can change with small, functionally meaningless code changes in the tokenizers library. Proceeding with existing found cache."
                 )
@@ -101,13 +103,12 @@ class LMDataModule(L.LightningDataModule):
                 processed_datasets.save_to_disk(
                     cache_path, num_proc=self.args.preprocessing_workers
                 )
-
+        pad_to_multiple_of = 8 if self.args.precision in ["16-mixed", "bf16-mixed"] else None
         if self.args.language_modeling_strategy == "clm":
             data_collator = DataCollatorForLanguageModeling(
                 tokenizer=tokenizer, mlm=False, pad_to_multiple_of=pad_to_multiple_of
             )
         elif self.args.language_modeling_strategy == "mlm":
-            pad_to_multiple_of = 8 if self.args.precision in ["16-mixed", "bf16-mixed"] else None
             DataCollatorClass = (
                 DataCollatorForWholeWordMask
                 if self.whole_word_masking
@@ -245,7 +246,7 @@ class LMDataModule(L.LightningDataModule):
         common_args = dict(
             batch_size=self.args.batch_size_per_device,
             num_workers=self.args.workers,
-            persistent_workers=True,  #  # https://discuss.pytorch.org/t/what-are-the-dis-advantages-of-persistent-workers/102110/10
+            persistent_workers=True,  # https://discuss.pytorch.org/t/what-are-the-dis-advantages-of-persistent-workers/102110/10
             pin_memory=True,
             worker_init_fn=set_torch_file_sharing_strategy_to_system
             if self.misc_args.too_many_open_files_fix
@@ -258,7 +259,7 @@ class LMDataModule(L.LightningDataModule):
         common_args = dict(
             batch_size=self.args.batch_size_per_device,
             num_workers=self.args.workers,
-            persistent_workers=True,  #  # https://discuss.pytorch.org/t/what-are-the-dis-advantages-of-persistent-workers/102110/10
+            persistent_workers=True,  # https://discuss.pytorch.org/t/what-are-the-dis-advantages-of-persistent-workers/102110/10
             pin_memory=True,
             worker_init_fn=set_torch_file_sharing_strategy_to_system
             if self.misc_args.too_many_open_files_fix

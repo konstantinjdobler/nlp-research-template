@@ -103,7 +103,7 @@ class WandbCleanupDiskAndCloudSpaceCallback(Callback):
         # Free up local wandb cache (This is often A LOT of memory)
         if self.cleanup_local:
             logger.info("Starting wandb artifact cache cleanup timeout")
-            cache_cleanup_callback = lambda: subprocess.run(
+            cache_cleanup_callback = lambda: subprocess.run(  # noqa: E731
                 ["wandb", "artifact", "cache", "cleanup", f"{self.size_limit}GB"]
             )
             timer = threading.Timer(

@@ -4,7 +4,6 @@ from typing import TYPE_CHECKING
 import lightning as L
 import torch
 from loguru import logger
-from torch import nn
 from torch.optim import AdamW
 from transformers.modeling_utils import PreTrainedModel
 from transformers.models.auto.configuration_auto import AutoConfig
