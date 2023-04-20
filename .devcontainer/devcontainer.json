@@ -1,0 +1,56 @@
+// For format details, see https://aka.ms/devcontainer.json. For config options, see the
+// README at: https://github.com/devcontainers/templates/tree/main/src/docker-existing-dockerfile
+{
+	"name": "Existing Dockerfile",
+	"build": {
+		// Sets the run context to one level up instead of the .devcontainer folder.
+		"context": "..",
+		// Update the 'dockerFile' property if you aren't using the standard 'Dockerfile' filename.
+		"dockerfile": "../Dockerfile"
+	},
+	// "features": {
+	// 	"ghcr.io/devcontainers-contrib/features/black:2": {
+	// 		"version": "latest"
+	// 	},
+	// 	"ghcr.io/devcontainers-contrib/features/isort:2": {},
+	// 	"ghcr.io/devcontainers-contrib/features/flake8:2": {}
+	// },
+	"runArgs": [
+		"--ipc=host",
+		"--gpus",
+		"device=0"
+	],
+	"mounts": [
+		"source=/scratch2/.cache,target=/root/.cache,type=bind"
+	],
+	//TODO remoteEnv for WanDB
+	// Features to add to the dev container. More info: https://containers.dev/features.
+	"features": {
+		"ghcr.io/devcontainers/features/git:1.1.5": {},
+		// "ghcr.io/devcontainers-contrib/features/flake8:2.0.13": {}
+	},
+	"customizations": {
+		// Configure properties specific to VS Code.
+		"vscode": {
+			// Add the IDs of extensions you want installed when the container is created.
+			"extensions": [
+				"ms-python.python",
+				"github.copilot",
+				"percy.vscode-pydata-viewer",
+				"kevinrose.vsc-python-indent",
+				"njqdev.vscode-python-typehint",
+				"ms-python.flake",
+				"foxundermoon.shell-format"
+			]
+		}
+	}
+	// Use 'forwardPorts' to make a list of ports inside the container available locally.
+	// "forwardPorts": [],
+	// Uncomment the next line to run commands after the container is created.
+	// "postCreateCommand": "cat /etc/os-release",
+	// Configure tool-specific properties.
+	// "customizations": {},
+	// Uncomment to connect as an existing user other than the container default. More info: https://aka.ms/dev-containers-non-root.
+	// "remoteUser": "devcontainer"
+	// "containerUser": "mamba"
+}

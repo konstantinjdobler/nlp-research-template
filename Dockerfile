@@ -9,7 +9,7 @@ FROM --platform=$TARGETPLATFORM mambaorg/micromamba:1.3.1 as micromamba
 # -----------------
 # Primary container
 # -----------------
-FROM --platform=$TARGETPLATFORM nvidia/cuda:11.8.0-cudnn8-runtime-ubi8
+FROM --platform=$TARGETPLATFORM nvidia/cuda:11.8.0-cudnn8-runtime-ubuntu22.04
 
 # From https://github.com/mamba-org/micromamba-docker#adding-micromamba-to-an-existing-docker-image
 # The commands below add micromamba to an existing image to give the capability to ad-hoc install new dependencies
@@ -58,7 +58,7 @@ CMD ["/bin/bash"]
 
 # Install gcc (necessary for .compile() with PyTorch 2.0)
 USER root
-RUN yum install -y gcc gcc-c++ && yum clean all
+RUN apt-get update && apt-get install -y gcc && apt-get clean all
 # give user permission to gcc
 RUN chown $MAMBA_USER:$MAMBA_USER /usr/bin/gcc
 USER $MAMBA_USER
@@ -86,7 +86,15 @@ RUN micromamba config prepend channels conda-forge --env
 # provide conda alias for micromamba
 USER root
 RUN echo "alias conda=micromamba" >> /usr/local/bin/_activate_current_env.sh
+
+### Additional
+RUN apt-get update && apt-get install -y openssh-client nano
+
+
 USER $MAMBA_USER
+# USER root
 
 # Use our environment as default
 ENV ENV_NAME=research
+
+## Additional
