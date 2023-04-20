@@ -8,22 +8,12 @@
 		// Update the 'dockerFile' property if you aren't using the standard 'Dockerfile' filename.
 		"dockerfile": "../Dockerfile"
 	},
-	// "features": {
-	// 	"ghcr.io/devcontainers-contrib/features/black:2": {
-	// 		"version": "latest"
-	// 	},
-	// 	"ghcr.io/devcontainers-contrib/features/isort:2": {},
-	// 	"ghcr.io/devcontainers-contrib/features/flake8:2": {}
-	// },
-	"runArgs": [
-		"--ipc=host",
-		"--gpus",
-		"device=0"
-	],
-	"mounts": [
-		"source=/scratch2/.cache,target=/root/.cache,type=bind"
-	],
+	"runArgs": ["--ipc=host","--gpus","device=CHANGE_ME"],
+	"mounts": ["source=/CHANGE_ME/.cache,target=/mamba/.cache,type=bind"],
 	//TODO remoteEnv for WanDB
+	"remoteEnv":{
+		"WANDB_API_KEY": "${localEnv:WANDB_API_KEY}"
+	},
 	// Features to add to the dev container. More info: https://containers.dev/features.
 	"features": {
 		"ghcr.io/devcontainers/features/git:1.1.5": {},
@@ -43,7 +33,9 @@
 				"foxundermoon.shell-format"
 			]
 		}
-	}
+	},
+	// Currently not functioning
+	// "postCreateCommand": "apt-get update && apt-get install openssh-client nano -y"
 	// Use 'forwardPorts' to make a list of ports inside the container available locally.
 	// "forwardPorts": [],
 	// Uncomment the next line to run commands after the container is created.

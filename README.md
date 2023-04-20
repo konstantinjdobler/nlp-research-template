@@ -92,6 +92,11 @@ If you want to run an interactive session with bash don't forget the `--pty` fla
 </p>
 </details>
 
+## Development
+We provide an example setup for a remote development environment on a GPU server using [VS Code](https://code.visualstudio.com/), [Remote - SSH](https://code.visualstudio.com/docs/remote/ssh), and [Dev Containers](https://code.visualstudio.com/docs/remote/devcontainers/containers). This allows you to use the same environment for both development and production. For more details, see [here](https://code.visualstudio.com/docs/remote/advancedcontainers/develop-remote-host).
+
+Before you can start successfully, you have to adapt `"runArgs": ["--ipc=host", "--gpus", "device=CHANGE_ME"]` and `"mounts": ["source=/CHANGE_ME/.cache,target=/mamba/.cache,type=bind"]` in `.devcontainer/devcontainer.json`. Additionally, you can set the `WANDB_API_KEY` in your remote environment; it will then be automatically mapped into the container.
+
 ## Training
 
 To start a language model MLM training, run:
