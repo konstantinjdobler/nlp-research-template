@@ -1,4 +1,5 @@
 import errno
+import glob
 import os
 import shutil
 import tempfile
@@ -60,7 +61,7 @@ class LMDataModule(L.LightningDataModule):
         if get_rank() == 0:
             logger.debug(f"Loaded tokenizer: {tokenizer}")
 
-        tokenizer_name = self.tokenizer_path.replace("/", "_")
+        tokenizer_name = self.tokenizer_path.rstrip("/").replace("/", "_")
         tokenize_fn = make_tokenize_function(tokenizer, self.args.max_sequence_length)
         tokenize_fn_hash = datasets.fingerprint.Hasher.hash(tokenize_fn)
 
@@ -68,8 +69,13 @@ class LMDataModule(L.LightningDataModule):
 
         cache_path = os.path.join(
             tokenized_data_dir,
-            f"{self.args.train_file}.{self.args.dev_file}.seq_len_{self.args.max_sequence_length}.tokenizer_{tokenizer_name}.tokenize_fn_hash_{tokenize_fn_hash}",
+            f"{self.args.train_file}.{self.args.dev_file}.seq_len_{self.args.max_sequence_length}.tokenizer{tokenizer_name}.tokenize_fn_hash_{tokenize_fn_hash}.arrow",
         )
+        maybe_cache_path = os.path.join(
+            tokenized_data_dir,
+            f"{self.args.train_file}.{self.args.dev_file}.seq_len_{self.args.max_sequence_length}.tokenizer{tokenizer_name}.tokenize_fn_hash_.*.arrow",
+        )
+        maybe_cache_path_match_list = glob.glob(maybe_cache_path)
         logger.info(f"Rank {get_rank()} | Cache path: {cache_path}")
 
         with main_process_first(
@@ -78,6 +84,14 @@ class LMDataModule(L.LightningDataModule):
             if os.path.exists(cache_path):
                 logger.success(f"Rank {get_rank()} | Found cached processed dataset: {cache_path}")
                 processed_datasets = datasets.load_from_disk(cache_path)
+                logger.success(
+                    f"Rank {get_rank()} | Loaded cached processed dataset: {processed_datasets}"
+                )
+            elif len(maybe_cache_path_match_list) > 0 and os.path.exists(maybe_cache_path_match_list[0]):
+                logger.warning(
+                    f"Rank {get_rank()} | Did not find cached processed dataset: {cache_path} but {maybe_cache_path_match_list[0]}. The tokenize function hash can change with small, functionally meaningless code changes in the tokenizers library. Proceeding with existing found cache."
+                )
+                processed_datasets = datasets.load_from_disk(maybe_cache_path_match_list[0])
                 logger.success(
                     f"Rank {get_rank()} | Loaded cached processed dataset: {processed_datasets}"
                 )
