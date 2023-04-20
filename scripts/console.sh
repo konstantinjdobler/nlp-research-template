@@ -18,5 +18,5 @@ docker run -it \
     -v "source=/CHANGE_ME/.cache,target=/mamba/.cache,type=bind" \
     -v "$(pwd)":/workspace \
     -w /workspace \
-    template \
+    DOCKER_TAG \
     bash

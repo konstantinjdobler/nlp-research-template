@@ -10,19 +10,19 @@
 	},
 	"runArgs": ["--ipc=host","--gpus","device=CHANGE_ME"],
 	"mounts": ["source=/CHANGE_ME/.cache,target=/mamba/.cache,type=bind"],
-	//TODO remoteEnv for WanDB
 	"remoteEnv":{
 		"WANDB_API_KEY": "${localEnv:WANDB_API_KEY}"
 	},
 	// Features to add to the dev container. More info: https://containers.dev/features.
 	"features": {
 		"ghcr.io/devcontainers/features/git:1.1.5": {},
-		// "ghcr.io/devcontainers-contrib/features/flake8:2.0.13": {}
+		// "ghcr.io/devcontainers-contrib/features/flake8:2.0.13": {} // Not working currently
 	},
 	"customizations": {
 		// Configure properties specific to VS Code.
 		"vscode": {
 			// Add the IDs of extensions you want installed when the container is created.
+			// These depend on your preferences, we just want to give our recommendations here.
 			"extensions": [
 				"ms-python.python",
 				"github.copilot",
@@ -34,15 +34,9 @@
 			]
 		}
 	},
-	// Currently not functioning
+	// Currently not functioning so we have to install development tools already in the dockerfile for now
 	// "postCreateCommand": "apt-get update && apt-get install openssh-client nano -y"
+
 	// Use 'forwardPorts' to make a list of ports inside the container available locally.
-	// "forwardPorts": [],
-	// Uncomment the next line to run commands after the container is created.
-	// "postCreateCommand": "cat /etc/os-release",
-	// Configure tool-specific properties.
-	// "customizations": {},
-	// Uncomment to connect as an existing user other than the container default. More info: https://aka.ms/dev-containers-non-root.
-	// "remoteUser": "devcontainer"
-	// "containerUser": "mamba"
+	// "forwardPorts": []
 }

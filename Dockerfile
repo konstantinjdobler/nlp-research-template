@@ -87,14 +87,10 @@ RUN micromamba config prepend channels conda-forge --env
 USER root
 RUN echo "alias conda=micromamba" >> /usr/local/bin/_activate_current_env.sh
 
-### Additional
+## Additional for development
 RUN apt-get update && apt-get install -y openssh-client nano
 
-
 USER $MAMBA_USER
-# USER root
 
 # Use our environment as default
 ENV ENV_NAME=research
-
-## Additional
