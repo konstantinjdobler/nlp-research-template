@@ -4,13 +4,32 @@
 # The actual installation is done by micromamba, we have simply provided an alias to link the conda command to micromamba
 
 # Load micromamba container to copy from later
-FROM --platform=$TARGETPLATFORM mambaorg/micromamba:1.3.1 as micromamba
+FROM --platform=linux/amd64 mambaorg/micromamba:1.3.1 as micromamba
 
 # -----------------
-# Primary container
+# base image for amd64
 # -----------------
-FROM --platform=$TARGETPLATFORM nvidia/cuda:11.8.0-cudnn8-runtime-ubuntu22.04
+FROM --platform=linux/amd64 nvidia/cuda:11.8.0-cudnn8-runtime-ubuntu22.04 as amd64
+# Copy lockfile to container
+COPY conda-lock.yml /locks/conda-lock.yml
+# Install compiler for .compile() with PyTorch 2.0 and openssh-client & nano for devcontainers
+RUN apt-get update && apt-get install -y gcc g++ openssh-client nano && apt-get clean all
 
+# -----------------
+# base image for ppc64le
+# -----------------
+FROM --platform=linux/ppc64le nvidia/cuda:11.8.0-cudnn8-runtime-ubi8 as ppc64le
+# Copy ppc64le specififc lockfile to container
+COPY ppc64le.conda-lock.yml /locks/conda-lock.yml
+# Install compiler for .compile() with PyTorch 2.0
+RUN yum install -y gcc gcc-c++ && yum clean all
+
+
+# -----------------
+# Final build image - we choose the correct base image based on the target architecture
+# -----------------
+ARG TARGETARCH
+FROM $TARGETARCH as final
 # From https://github.com/mamba-org/micromamba-docker#adding-micromamba-to-an-existing-docker-image
 # The commands below add micromamba to an existing image to give the capability to ad-hoc install new dependencies
 
@@ -56,40 +75,32 @@ CMD ["/bin/bash"]
 ######### Adding micromamba stops here #############
 ####################################################
 
-# Install gcc (necessary for .compile() with PyTorch 2.0)
+# Switch to root user to grant necessary permissions
 USER root
-RUN apt-get update && apt-get install -y gcc && apt-get clean all
-# give user permission to gcc
+# Give user permission to gcc
 RUN chown $MAMBA_USER:$MAMBA_USER /usr/bin/gcc
-USER $MAMBA_USER
-## Additional for development with devcontainer
-RUN apt-get update && apt-get install -y openssh-client nano
-
-ARG TARGETOS TARGETARCH TARGETPLATFORM
-COPY --chown=$MAMBA_USER:$MAMBA_USER conda-lock.yml /locks/conda-lock.yml
-# HACK: overwrite generic lockfile if TARGETARCH=ppc64le, otherwise ${TARGETARCH}.conda-lock.yml will not exist
-# The `*` is necessary to prevent the build from failing when the file doesn not exist
-# This way, we have a Dockerfile that works for all architectures
-COPY --chown=$MAMBA_USER:$MAMBA_USER *${TARGETARCH}.conda-lock.yml /locks/conda-lock.yml
-
 # Necessary to prevent permission error when micromamba tries to install pip dependencies from lockfile
 RUN chown $MAMBA_USER:$MAMBA_USER /locks/
+RUN chown $MAMBA_USER:$MAMBA_USER /locks/conda-lock.yml
+# Provide conda alias for micromamba
+RUN echo "alias conda=micromamba" >> /usr/local/bin/_activate_current_env.sh
 
+# Switch back to micromamba user
+USER $MAMBA_USER
+ARG TARGETPLATFORM
 # Install dependencies from lockfile into environment, cache packages in /opt/conda/pkgs
 RUN --mount=type=cache,target=${MAMBA_ROOT_PREFIX}/pkgs,id=conda-${TARGETPLATFORM} micromamba create --name research --yes --file /locks/conda-lock.yml
+# Run this in a separate step to still keep the docker cache for future builds
+RUN micromamba clean --all --yes
 
 # Set conda-forge as default channel (otherwise no default channel is set)
 ARG MAMBA_DOCKERFILE_ACTIVATE=1
 RUN micromamba config prepend channels conda-forge --env
+# Disable micromamba banner at every command
+RUN micromamba config set show_banner false --env
 
 # Install optional tricky pip dependencies that do not work with conda-lock
 # RUN micromamba run -n research pip install example-dependency --no-deps --no-cache-dir
-
-# provide conda alias for micromamba
-USER root
-RUN echo "alias conda=micromamba" >> /usr/local/bin/_activate_current_env.sh
-
-USER $MAMBA_USER
 
 # Use our environment as default
 ENV ENV_NAME=research
