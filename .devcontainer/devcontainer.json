@@ -1,0 +1,42 @@
+// For format details, see https://aka.ms/devcontainer.json. For config options, see the
+// README at: https://github.com/devcontainers/templates/tree/main/src/docker-existing-dockerfile
+{
+	"name": "Existing Dockerfile",
+	"build": {
+		// Sets the run context to one level up instead of the .devcontainer folder.
+		"context": "..",
+		// Update the 'dockerFile' property if you aren't using the standard 'Dockerfile' filename.
+		"dockerfile": "../Dockerfile"
+	},
+	"runArgs": ["--ipc=host","--gpus","device=CHANGE_ME"],
+	"mounts": ["source=/CHANGE_ME/.cache,target=/mamba/.cache,type=bind"],
+	"remoteEnv":{
+		"WANDB_API_KEY": "${localEnv:WANDB_API_KEY}"
+	},
+	// Features to add to the dev container. More info: https://containers.dev/features.
+	"features": {
+		"ghcr.io/devcontainers/features/git:1.1.5": {},
+		// "ghcr.io/devcontainers-contrib/features/flake8:2.0.13": {} // Not working currently
+	},
+	"customizations": {
+		// Configure properties specific to VS Code.
+		"vscode": {
+			// Add the IDs of extensions you want installed when the container is created.
+			// These depend on your preferences, we just want to give our recommendations here.
+			"extensions": [
+				"ms-python.python",
+				"github.copilot",
+				"percy.vscode-pydata-viewer",
+				"kevinrose.vsc-python-indent",
+				"njqdev.vscode-python-typehint",
+				"ms-python.flake",
+				"foxundermoon.shell-format"
+			]
+		}
+	},
+	// Currently not functioning so we have to install development tools already in the dockerfile for now
+	// "postCreateCommand": "apt-get update && apt-get install openssh-client nano -y"
+
+	// Use 'forwardPorts' to make a list of ports inside the container available locally.
+	// "forwardPorts": []
+}
