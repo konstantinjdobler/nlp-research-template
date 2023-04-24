@@ -1,10 +1,14 @@
+# syntax=docker/dockerfile:1.5.2
+
 # This Dockerfile produces a container with all dependencies installed into an environment called "research"
 # Additionally, the container has a full-fledged micromamba installation, which is a faster drop-in replacement for conda
 # When inside the container, you can install additional dependencies with `conda install <package>`, e.g. `conda install scipy`
 # The actual installation is done by micromamba, we have simply provided an alias to link the conda command to micromamba
 
+# The syntax line above is crucial to enable variable expansion for type=cache=mount commands
+
 # Load micromamba container to copy from later
-FROM --platform=$TARGETPLATFORM mambaorg/micromamba:1.3.1 as micromamba
+FROM --platform=$TARGETPLATFORM mambaorg/micromamba:1.4.2 as micromamba
 
 # -----------------
 # base image for amd64
@@ -88,10 +92,11 @@ RUN echo "alias conda=micromamba" >> /usr/local/bin/_activate_current_env.sh
 # Switch back to micromamba user
 USER $MAMBA_USER
 ARG TARGETPLATFORM
+# Use line below to debug if cache is correctly mounted
+# RUN --mount=type=cache,target=$MAMBA_ROOT_PREFIX/pkgs,id=conda-$TARGETPLATFORM,uid=$MAMBA_USER_ID,gid=$MAMBA_USER_GID ls -al /opt/conda/pkgs
 # Install dependencies from lockfile into environment, cache packages in /opt/conda/pkgs
-RUN --mount=type=cache,target=${MAMBA_ROOT_PREFIX}/pkgs,id=conda-${TARGETPLATFORM} micromamba create --name research --yes --file /locks/conda-lock.yml
-# Run this in a separate step to still keep the docker cache for future builds
-RUN micromamba clean --all --yes
+RUN --mount=type=cache,target=$MAMBA_ROOT_PREFIX/pkgs,id=conda-$TARGETPLATFORM,uid=$MAMBA_USER_ID,gid=$MAMBA_USER_GID \
+    micromamba create --name research --yes --file /locks/conda-lock.yml
 
 # Set conda-forge as default channel (otherwise no default channel is set)
 ARG MAMBA_DOCKERFILE_ACTIVATE=1
