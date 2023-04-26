@@ -79,7 +79,7 @@ docker build --tag <username>/<imagename>:<tag> --platform=linux/<amd64/ppc64le>
 ## Development
 We provide an example setup for a remote development environment on a GPU server using [VS Code](https://code.visualstudio.com/), [Remote - SSH](https://code.visualstudio.com/docs/remote/ssh), and [Dev Containers](https://code.visualstudio.com/docs/remote/devcontainers/containers). This allows you to use the same environment for both development and production. For more details, see [here](https://code.visualstudio.com/docs/remote/advancedcontainers/develop-remote-host).
 
-Before you can start successfully, you have to adapt `"runArgs": ["--ipc=host", "--gpus", "device=CHANGE_ME"]` and `"mounts": ["source=/CHANGE_ME/.cache,target=/mamba/.cache,type=bind"]` in `.devcontainer/devcontainer.json`. Additionally, you can set the `WANDB_API_KEY` in your remote environment; it will then be automatically mapped into the container.
+Before you can start successfully, you have to adapt `"runArgs": ["--ipc=host", "--gpus", "device=CHANGE_ME"]` and `"mounts": ["source=/CHANGE_ME/.cache,target=/mamba/.cache,type=bind"]` in [`.devcontainer/devcontainer.json`](.devcontainer/devcontainer.json). Additionally, you can set the `WANDB_API_KEY` in your remote environment; it will then be automatically mapped into the container.
 
 ## Training
 
