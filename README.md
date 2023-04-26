@@ -76,22 +76,6 @@ For fully reproducible environments and running on HPC clusters, we provide pre-
 docker build --tag <username>/<imagename>:<tag> --platform=linux/<amd64/ppc64le> .
 ```
 
-<details><summary>Usage with SLURM / <code>pyxis</code></summary>
-
-<p>
-
-For security reasons, `docker` might be disabled on your HPC cluster. You might be able to use the SLURM plugin `pyxis` instead like this:
-
-```bash
-srun ... --container-image konstantinjdobler/nlp-research-template:torch2.1.0-cuda11.8 --container-name torch-cuda python train.py
-```
-
-This uses [`enroot`](https://github.com/NVIDIA/enroot) under the hood to import your docker image and run your code inside the container. See the [`pyxis` documentation](https://github.com/NVIDIA/pyxis) for more options, such as `--container-mounts` or `--container-writable`.
-
-If you want to run an interactive session with bash don't forget the `--pty` flag, otherwise the environment won't be activated properly.
-</p>
-</details>
-
 ## Development
 We provide an example setup for a remote development environment on a GPU server using [VS Code](https://code.visualstudio.com/), [Remote - SSH](https://code.visualstudio.com/docs/remote/ssh), and [Dev Containers](https://code.visualstudio.com/docs/remote/devcontainers/containers). This allows you to use the same environment for both development and production. For more details, see [here](https://code.visualstudio.com/docs/remote/advancedcontainers/develop-remote-host).
 
@@ -107,3 +91,39 @@ python train.py --data /path/to/data/dir --model roberta-base --gpus 2 --offline
 
 By default, `train.txt` and `dev.txt` are expected in the data directory. To see an overview over all options and their defaults, run `python train.py --help`.
 We have disabled Weights & Biases syncing with the `--offline` flag. To enable W&B, enter your `WANDB_ENTITY` and `WANDB_PROJECT` in [dlib/frameworks/wandb.py](dlib/frameworks/wandb.py) and simply omit the `--offline` flag.
+
+### Using the Docker environment for training
+To run the training code inside the docker environment, use a `docker run` command like this:
+```bash
+docker run --rm -it --ipc=host --gpus='"device=0,1"' -v "($pwd)":/workspace -w /workspace -v /path/to/data:/data/in/container python train.py --gpus -1 ...
+```
+The `--gpus='"device=0,1"'` flag (change this to use the GPUs you actually want) selects the GPUs with indices `0` and `1` for the container and `train.py --gpus -1` makes the training script use all available GPUs (which are only the ones selected with the docker flag). 
+
+<details><summary>Weights & Biases + Docker</summary>
+
+<p>
+
+Weights & Biases needs access to your `WANDB_API_KEY` to be able to log results. Either set `WANDB_API_KEY` on your host machine and use the `docker` flag `--env WANDB_API_KEY` or mount your `.netrc` file into the docker container like so: `-v ~/.netrc:~/.netrc`.
+</p>
+</details>
+
+<details><summary>Using Docker with SLURM / <code>pyxis</code></summary>
+
+<p>
+
+For security reasons, `docker` might be disabled on your HPC cluster. You might be able to use the SLURM plugin `pyxis` instead like this:
+
+```bash
+srun ... --container-image konstantinjdobler/nlp-research-template:torch2.0.0-cuda11.8 --container-name torch-cuda python train.py ...
+```
+
+This uses [`enroot`](https://github.com/NVIDIA/enroot) under the hood to import your docker image and run your code inside the container. See the [`pyxis` documentation](https://github.com/NVIDIA/pyxis) for more options, such as `--container-mounts` or `--container-writable`.
+
+If you want to run an interactive session with bash don't forget the `--pty` flag, otherwise the environment won't be activated properly.
+</p>
+</details>
+
+
+
+
+
