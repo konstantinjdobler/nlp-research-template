@@ -174,11 +174,6 @@ class TrainingArgs:
     )
 
     def __post_init__(self):
-        if self.distributed_strategy is None:
-            self.devices = None
-        elif self.devices is None:
-            self.distributed_strategy = None
-
         if self.val_frequency < 1:
             self.val_frequency = int(self.training_goal * self.val_frequency)
         if self.model_log_frequency < 1:
