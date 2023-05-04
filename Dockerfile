@@ -13,20 +13,20 @@ FROM --platform=$TARGETPLATFORM mambaorg/micromamba:1.4.2 as micromamba
 # -----------------
 # base image for amd64
 # -----------------
-FROM --platform=linux/amd64 nvidia/cuda:11.8.0-cudnn8-runtime-ubuntu22.04 as amd64
+FROM --platform=linux/amd64 nvidia/cuda:11.8.0-cudnn8-runtime-ubi8 as amd64
+# Install compiler for .compile() with PyTorch 2.0 and nano for devcontainers
+RUN yum install -y gcc gcc-c++ nano && yum clean all
 # Copy lockfile to container
 COPY conda-lock.yml /locks/conda-lock.yml
-# Install compiler for .compile() with PyTorch 2.0 and openssh-client & nano for devcontainers
-RUN apt-get update && apt-get install -y gcc g++ openssh-client nano && apt-get clean all
 
 # -----------------
 # base image for ppc64le
 # -----------------
 FROM --platform=linux/ppc64le nvidia/cuda:11.8.0-cudnn8-runtime-ubi8 as ppc64le
-# Copy ppc64le specififc lockfile to container
-COPY ppc64le.conda-lock.yml /locks/conda-lock.yml
 # Install compiler for .compile() with PyTorch 2.0
 RUN yum install -y gcc gcc-c++ && yum clean all
+# Copy ppc64le specififc lockfile to container
+COPY ppc64le.conda-lock.yml /locks/conda-lock.yml
 
 
 # -----------------
