@@ -68,7 +68,7 @@ class BasicLM(L.LightningModule):
 
     def training_step(self, batch, batch_idx):
         loss = self.model(**batch).loss
-        self.log("train/loss", loss, on_step=True, on_epoch=False)
+        self.log("train/loss", loss.item(), on_step=True, on_epoch=False)
         return loss
 
     def on_train_batch_end(self, outputs, batch, batch_idx, unused=0) -> None:
@@ -85,7 +85,7 @@ class BasicLM(L.LightningModule):
         loss = self.model(**batch).loss
 
         self.log_dict(
-            {"val/loss": loss, "progress/ksamples": self.hparams.ksamples_processed},
+            {"val/loss": loss.item(), "progress/ksamples": self.hparams.ksamples_processed},
             on_step=False,
             on_epoch=True,
             sync_dist=True,
