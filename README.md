@@ -30,7 +30,7 @@ bash Mambaforge-$(uname)-$(uname -m).sh
 The preferred method is to install conda-lock into your `mamba` / `conda` `base` environment using `mamba install -c conda-forge -n base conda-lock`. Then, you can access conda-lock via the automatic subcommand discovery (e.g. `mamba lock --version`). Otherwise, visit the [conda-lock repo](https://github.com/conda/conda-lock).
 
 ```bash
-mamba lock install --name gpt4 --file conda-lock.yml # create environment based on lockfile
+mamba lock install --name gpt5 --file conda-lock.yml # create environment based on lockfile
 mamba lock # create new lockfile based on environment.yml
 mamba lock --update # update packages in lockfile
 ```
@@ -42,7 +42,7 @@ mamba lock --update # update packages in lockfile
 After having installed `mamba` and `conda-lock`, you can create a `mamba` environment from a lockfile with all necessary dependencies installed like this:
 
 ```bash
-mamba lock install --name <gpt4> --file conda-lock.yml
+mamba lock install --name <gpt5> --file conda-lock.yml
 ```
 
 That's it -- this is the power of lockfiles.
