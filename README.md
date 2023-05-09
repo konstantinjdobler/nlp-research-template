@@ -46,7 +46,7 @@ You can then activate your environment with
 ```bash
 mamba activate <environmentName>
 ```
-For more commands (e.g. updating or removing environments) have a look at [conda-documentation](https://conda.io/projects/conda/en/latest/user-guide/tasks/manage-environments.html#removing-an-environment)
+For more commands (e.g. updating or removing environments) have a look at the [conda-documentation](https://conda.io/projects/conda/en/latest/user-guide/tasks/manage-environments.html#removing-an-environment).
 
 <details><summary>Setup on <code>ppc64le</code></summary>
 
