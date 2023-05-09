@@ -29,7 +29,7 @@ When installing Mamba on Windows you will need to add its Script-folder to your 
 ```bash
 C:\Users\user\mambaforge\Scripts
 ```
-Afterwards, you will be able to run the `mamba` commands simply from your command line. Note that you might not be able to activate your created environments within `powershell`. A simple workaround would be to use `cmd` instead.
+Afterwards, you will be able to run `mamba` commands simply from your command line. Note that you might not be able to activate your created environments within `powershell`. A simple workaround would be to use `cmd` instead.
 </details>
 
 </details>
