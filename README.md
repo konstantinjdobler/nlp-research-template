@@ -22,6 +22,9 @@ bash Mambaforge-$(uname)-$(uname -m).sh
 ```
 
 <details><summary>using Windows</summary>
+
+<p>
+
 When installing Mamba on Windows you will need to add its Script-folder to your **PATH** environment variable. This folder is by default located at 
 ```bash
 C:\Users\user\mambaforge\Scripts
