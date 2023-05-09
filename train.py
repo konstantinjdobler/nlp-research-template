@@ -407,6 +407,7 @@ def main(parsed_arg_groups: tuple[TrainingArgs, MiscArgs]):
     trainer = Trainer(
         max_steps=args.training_goal,
         val_check_interval=args.val_frequency,
+        check_val_every_n_epoch=None,  # validation based on steps instead of epochs
         devices=args.devices,
         accelerator=args.accelerator,
         strategy=distributed_strategy,
