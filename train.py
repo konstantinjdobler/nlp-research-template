@@ -174,11 +174,6 @@ class TrainingArgs:
     )
 
     def __post_init__(self):
-        if self.distributed_strategy is None:
-            self.devices = None
-        elif self.devices is None:
-            self.distributed_strategy = None
-
         if self.val_frequency < 1:
             self.val_frequency = int(self.training_goal * self.val_frequency)
         if self.model_log_frequency < 1:
@@ -412,6 +407,7 @@ def main(parsed_arg_groups: tuple[TrainingArgs, MiscArgs]):
     trainer = Trainer(
         max_steps=args.training_goal,
         val_check_interval=args.val_frequency,
+        check_val_every_n_epoch=None,  # validation based on steps instead of epochs
         devices=args.devices,
         accelerator=args.accelerator,
         strategy=distributed_strategy,
