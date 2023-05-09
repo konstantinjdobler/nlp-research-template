@@ -58,6 +58,11 @@ After having installed `mamba` and `conda-lock`, you can create a `mamba` enviro
 ```bash
 mamba lock install --name gpt5 conda-lock.yml
 ```
+You can then activate your environment with
+```bash
+mamba activate <environmentName>
+```
+For more commands (e.g. updating or removing environments) have a look at [conda-documentation](https://conda.io/projects/conda/en/latest/user-guide/tasks/manage-environments.html#removing-an-environment)
 
 You can then activate your environment with
 ```bash
