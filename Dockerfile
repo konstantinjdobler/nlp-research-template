@@ -7,33 +7,58 @@
 
 # The syntax line above is crucial to enable variable expansion for type=cache=mount commands
 
+# We can use the OS_PREFIX build arg to choose between ubi8 and ubuntu as base image (for amd64 processor architecture)
+ARG OS_SELECTOR=ubi8
+
 # Load micromamba container to copy from later
 FROM --platform=$TARGETPLATFORM mambaorg/micromamba:1.4.2 as micromamba
+
+
+####################################################
+################ BASE IMAGES #######################
+####################################################
 
 # -----------------
 # base image for amd64
 # -----------------
-FROM --platform=linux/amd64 nvidia/cuda:11.8.0-cudnn8-runtime-ubuntu22.04 as amd64
+FROM --platform=linux/amd64 nvidia/cuda:11.8.0-cudnn8-runtime-ubi8 as amd64ubi8
+# Install compiler for .compile() with PyTorch 2.0 and nano for devcontainers
+RUN yum install -y gcc gcc-c++ nano && yum clean all
 # Copy lockfile to container
 COPY conda-lock.yml /locks/conda-lock.yml
-# Install compiler for .compile() with PyTorch 2.0 and openssh-client & nano for devcontainers
-RUN apt-get update && apt-get install -y gcc g++ openssh-client nano && apt-get clean all
+
+# -----------------
+# devcontainer base image for amd64 using Ubuntu
+# SLURM + pyxis has a bug on our cluster, where the automatic activation of the conda environment fails if the base image is ubuntu
+# But Ubuntu works better for devcontainers than ubi8
+# So we use Ubuntu for devcontainers and ubi8 for actual deployment on the cluster
+# -----------------
+FROM --platform=linux/amd64 nvidia/cuda:11.8.0-cudnn8-runtime-ubuntu22.04 as amd64ubuntu
+# Install compiler for .compile() with PyTorch 2.0 and nano for devcontainers
+RUN apt-get update && apt-get install -y gcc g++ nano openssh-client && apt-get clean
+# Copy lockfile to container
+COPY conda-lock.yml /locks/conda-lock.yml
 
 # -----------------
 # base image for ppc64le
 # -----------------
-FROM --platform=linux/ppc64le nvidia/cuda:11.8.0-cudnn8-runtime-ubi8 as ppc64le
-# Copy ppc64le specififc lockfile to container
-COPY ppc64le.conda-lock.yml /locks/conda-lock.yml
+FROM --platform=linux/ppc64le nvidia/cuda:11.8.0-cudnn8-runtime-ubi8 as ppc64leubi8
 # Install compiler for .compile() with PyTorch 2.0
 RUN yum install -y gcc gcc-c++ && yum clean all
+# Copy ppc64le specififc lockfile to container
+COPY ppc64le.conda-lock.yml /locks/conda-lock.yml
 
+
+
+####################################################
+################ FINAL IMAGE #######################
+####################################################
 
 # -----------------
-# Final build image - we choose the correct base image based on the target architecture
+# Final build image - we choose the correct base image based on the target architecture and OS
 # -----------------
 ARG TARGETARCH
-FROM $TARGETARCH as final
+FROM ${TARGETARCH}${OS_SELECTOR} as final
 # From https://github.com/mamba-org/micromamba-docker#adding-micromamba-to-an-existing-docker-image
 # The commands below add micromamba to an existing image to give the capability to ad-hoc install new dependencies
 
@@ -107,5 +132,5 @@ RUN micromamba config set show_banner false --env
 # Install optional tricky pip dependencies that do not work with conda-lock
 # RUN micromamba run -n research pip install example-dependency --no-deps --no-cache-dir
 
-# Use our environment as default
+# Use our environment `research` as default
 ENV ENV_NAME=research
