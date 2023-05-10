@@ -21,6 +21,17 @@ curl -L -O "https://github.com/conda-forge/miniforge/releases/latest/download/Ma
 bash Mambaforge-$(uname)-$(uname -m).sh
 ```
 
+<details><summary>using Windows</summary>
+
+<p>
+
+When installing Mamba on Windows you will need to add its Script-folder to your **PATH** environment variable. This folder is by default located at 
+```bash
+C:\Users\user\mambaforge\Scripts
+```
+Afterwards, you will be able to run `mamba` commands simply from your command line. Note that you might not be able to activate your created environments within `powershell`. A simple workaround would be to use `cmd` instead.
+</details>
+
 </details>
 
 <details><summary>Installing <code>conda-lock</code></summary>
