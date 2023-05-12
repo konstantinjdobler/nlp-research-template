@@ -17,7 +17,7 @@
 		"device=CHANGE_ME"
 	],
 	"mounts": [
-		"source=/CHANGE_ME/.cache,target=/mamba/.cache,type=bind"
+		"source=/CHANGE_ME/.cache,target=/home/mamba/.cache,type=bind"
 	],
 	"remoteEnv": {
 		"WANDB_API_KEY": "${localEnv:WANDB_API_KEY}"
