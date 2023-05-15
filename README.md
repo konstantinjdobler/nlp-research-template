@@ -1,6 +1,6 @@
 # An opinionated template for NLP research code
 
-[![Docker Hub](https://img.shields.io/docker/v/konstantinjdobler/nlp-research-template/torch2.0.0-cuda11.8?color=blue&label=docker&logo=docker)](https://hub.docker.com/r/konstantinjdobler/nlp-research-template/tags) [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black) ![License: MIT](https://img.shields.io/github/license/konstantinjdobler/nlp-research-template?color=green)
+[![Docker Hub](https://img.shields.io/docker/v/konstantinjdobler/nlp-research-template/latest?color=blue&label=docker&logo=docker)](https://hub.docker.com/r/konstantinjdobler/nlp-research-template/tags) [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black) ![License: MIT](https://img.shields.io/github/license/konstantinjdobler/nlp-research-template?color=green)
 
 NLP research template for training language models from scratch using PyTorch + PyTorch Lightning + Weights & Biases + HuggingFace. It's built to be customized but provides comprehensive, sensible default functionality.
 
@@ -30,7 +30,7 @@ bash Mambaforge-$(uname)-$(uname -m).sh
 The preferred method is to install conda-lock into your `mamba` / `conda` `base` environment using `mamba install -c conda-forge -n base conda-lock`. Then, you can access conda-lock via the automatic subcommand discovery (e.g. `mamba lock --version`). Otherwise, visit the [conda-lock repo](https://github.com/conda/conda-lock).
 
 ```bash
-mamba lock install --name gpt5 --file conda-lock.yml # create environment based on lockfile
+mamba lock install --name gpt5 conda-lock.yml # create environment based on lockfile
 mamba lock # create new lockfile based on environment.yml
 mamba lock --update # update packages in lockfile
 ```
@@ -39,10 +39,10 @@ mamba lock --update # update packages in lockfile
 
 ### Environment
 
-After having installed `mamba` and `conda-lock`, you can create a `mamba` environment from a lockfile with all necessary dependencies installed like this:
+After having installed `mamba` and `conda-lock`, you can create a `mamba` environment named `gpt5` from a lockfile with all necessary dependencies installed like this:
 
 ```bash
-mamba lock install --name <gpt5> --file conda-lock.yml
+mamba lock install --name gpt5 conda-lock.yml
 ```
 
 That's it -- this is the power of lockfiles.
@@ -53,10 +53,11 @@ To generate new lockfiles after updating the `environment.yml` file, simply run 
 
 <p>
 
-It's slightly more tricky because the official channels do not provide packages compiled for <code>ppc64le</code>. However, we can use the amazing [Open-CE channel](https://ftp.osuosl.org/pub/open-ce/current/) instead. A lockfile containing the relevant dependencies is already prepared in <code>ppc64le.conda-lock.yml</code>.
+IBM PowerPC machines use a special processor architecture called <code>ppc64le</code>. If you're not using a PowerPC machine, do not worry about this.
+Setting up the envronment is slightly more tricky because the official channels do not provide packages compiled for <code>ppc64le</code>. However, we can use the amazing [Open-CE channel](https://ftp.osuosl.org/pub/open-ce/current/) instead. A lockfile containing the relevant dependencies is already prepared in <code>ppc64le.conda-lock.yml</code>.
 
 ```bash
-mamba lock install --name <gpt4> --file ppc64le.conda-lock.yml
+mamba lock install --name <gpt4> ppc64le.conda-lock.yml
 ```
 
 Dependencies for <code>ppce64le</code> should go into the seperate <code>ppc64le.environment.yml</code> file. Use the following command to generate a new lockfile after updating the dependencies:
@@ -77,20 +78,23 @@ docker build --tag <username>/<imagename>:<tag> --platform=linux/<amd64/ppc64le>
 ```
 
 ## Development
-We provide an example setup for a remote development environment on a GPU server using [VS Code](https://code.visualstudio.com/), [Remote - SSH](https://code.visualstudio.com/docs/remote/ssh), and [Dev Containers](https://code.visualstudio.com/docs/remote/devcontainers/containers). This allows you to use the same environment for both development and production. For more details, see [here](https://code.visualstudio.com/docs/remote/advancedcontainers/develop-remote-host).
+For development, you can just use the `mamba` environment as explained above. Alternatively, you can use [VS Code](https://code.visualstudio.com/) [Dev Containers](https://code.visualstudio.com/docs/remote/devcontainers/containers) with the [Remote - SSH](https://code.visualstudio.com/docs/remote/ssh) package to develop inside a docker container with all necessary dependencies pre-installed. This allows you to use the same environment for both development and production. Using devcontainers is especially useful for development on a remote machine like a GPU node. For more details, see [here](https://code.visualstudio.com/docs/remote/advancedcontainers/develop-remote-host).
 
-Before you can start successfully, you have to adapt `"runArgs": ["--ipc=host", "--gpus", "device=CHANGE_ME"]` and `"mounts": ["source=/CHANGE_ME/.cache,target=/mamba/.cache,type=bind"]` in [`.devcontainer/devcontainer.json`](.devcontainer/devcontainer.json). Additionally, you can set the `WANDB_API_KEY` in your remote environment; it will then be automatically mapped into the container.
+Before you can start a devcontainer successfully, you have to adapt `"runArgs": ["--ipc=host", "--gpus", "device=CHANGE_ME"]` and optionally mount cache files like datasets etc. with `"mounts": ["source=/MY_USER_DIR/.cache,target=/home/mamba/.cache,type=bind"]` in [`.devcontainer/devcontainer.json`](.devcontainer/devcontainer.json).  We recommend to **not** share the `.cache` folder with other users on the same host due to permission issues.
+
+
+Additionally, you can set the `WANDB_API_KEY` in your remote environment; it will then be automatically mapped into the container.
 
 ## Training
 
 To start a language model MLM training, run:
 
 ```bash
-python train.py --data /path/to/data/dir --model roberta-base --gpus 2 --offline
+python train.py -d /path/to/data/dir --model roberta-base --gpus 2 --offline -n test-run
 ```
 
 By default, `train.txt` and `dev.txt` are expected in the data directory. To see an overview over all options and their defaults, run `python train.py --help`.
-We have disabled Weights & Biases syncing with the `--offline` flag. To enable W&B, enter your `WANDB_ENTITY` and `WANDB_PROJECT` in [dlib/frameworks/wandb.py](dlib/frameworks/wandb.py) and simply omit the `--offline` flag.
+We have disabled Weights & Biases syncing with the `--offline` flag. To enable W&B, enter your `WANDB_ENTITY` and `WANDB_PROJECT` in [dlib/frameworks/wandb.py](dlib/frameworks/wandb.py) and simply omit the `--offline` flag. Assigning each experiment a fitting name with `-n` is recommended.
 
 ### Using the Docker environment for training
 To run the training code inside the docker environment, use a `docker run` command like this:
@@ -114,7 +118,7 @@ Weights & Biases needs access to your `WANDB_API_KEY` to be able to log results.
 For security reasons, `docker` might be disabled on your HPC cluster. You might be able to use the SLURM plugin `pyxis` instead like this:
 
 ```bash
-srun ... --container-image konstantinjdobler/nlp-research-template:torch2.0.0-cuda11.8 --container-name torch-cuda python train.py ...
+srun ... --container-image konstantinjdobler/nlp-research-template:latest --container-name torch-cuda python train.py ...
 ```
 
 This uses [`enroot`](https://github.com/NVIDIA/enroot) under the hood to import your docker image and run your code inside the container. See the [`pyxis` documentation](https://github.com/NVIDIA/pyxis) for more options, such as `--container-mounts` or `--container-writable`.
