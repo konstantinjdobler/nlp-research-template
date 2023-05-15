@@ -16,9 +16,10 @@
 		"--gpus",
 		"device=CHANGE_ME"
 	],
-	"mounts": [
-		"source=/CHANGE_ME/.cache,target=/mamba/.cache,type=bind"
-	],
+	// Optionally mount cache files like HuggingFace datasets cache. The user directory inside the container is /home/mamba/
+	// "mounts": [
+	// 	"source=/MY_HOME_DIR/.cache,target=/home/mamba/.cache,type=bind"
+	// ],
 	"remoteEnv": {
 		"WANDB_API_KEY": "${localEnv:WANDB_API_KEY}"
 	},
