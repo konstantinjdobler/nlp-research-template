@@ -32,7 +32,7 @@ The preferred method is to install conda-lock into your `mamba` / `conda` `base`
 ```bash
 mamba lock install --name gpt5 conda-lock.yml # create environment based on lockfile
 mamba lock # create new lockfile based on environment.yml
-mamba lock --update # update packages in lockfile
+mamba lock --update <package-name> # update specific packages in lockfile
 ```
 
 </details>
