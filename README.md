@@ -74,7 +74,7 @@ mamba lock --file ppc64le.environment.yml --lockfile ppc64le.conda-lock.yml
 For fully reproducible environments and running on HPC clusters, we provide pre-built docker images at [konstantinjdobler/nlp-research-template](https://hub.docker.com/r/konstantinjdobler/nlp-research-template/tags). We also provide a `Dockerfile` that allows you to build new docker images with updated dependencies:
 
 ```bash
-docker build --tag <username>/<imagename>:<tag> --platform=linux/<amd64/ppc64le> .
+docker build --tag <username>/<imagename>:<tag> --platform=linux/ppc64le .
 ```
 
 ## Development
