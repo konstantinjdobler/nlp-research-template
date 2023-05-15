@@ -283,10 +283,13 @@ def main(parsed_arg_groups: tuple[TrainingArgs, MiscArgs]):
     for arg_group in parsed_arg_groups:
         wandb_logger.log_hyperparams(dataclasses.asdict(arg_group))
 
-    if current_process_rank == 0 and not args.resume_training:
-        wandb_logger.experiment.name = (
-            misc_args.wandb_run_name + "-" + wandb_logger.version
-        )  # Append id to name for easier recognition in W&B UI
+    if current_process_rank == 0 and not args.resume_training and not misc_args.offline:
+        if misc_args.wandb_run_name is None:
+            logger.warning("No run name specified with `--wandb_run_name`. Using W&B default (randomly generated name).")
+        else:
+            wandb_logger.experiment.name = (
+                misc_args.wandb_run_name + "-" + wandb_logger.version
+            )  # Append id to name for easier recognition in W&B UI
 
     ########### Calulate training constants ###########
     KSAMPLES = 1000
