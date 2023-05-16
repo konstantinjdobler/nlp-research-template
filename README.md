@@ -63,10 +63,11 @@ For more commands (e.g. updating or removing environments) have a look at the [c
 
 <p>
 
-It's slightly more tricky because the official channels do not provide packages compiled for <code>ppc64le</code>. However, we can use the amazing [Open-CE channel](https://ftp.osuosl.org/pub/open-ce/current/) instead. A lockfile containing the relevant dependencies is already prepared in <code>ppc64le.conda-lock.yml</code>.
+If you wish to create an environment for a different architecture, you will need to use the packages suited for it. In the case of <code>ppc64le</code> this is a little bit tricky because the official channels do not provide packages compiled for it. However, we can use the amazing [Open-CE channel](https://ftp.osuosl.org/pub/open-ce/current/) instead. We prepared a lockfile containing the relevant dependencies already in <code>ppc64le.conda-lock.yml</code>.
 
 ```bash
 mamba lock install --name <gpt4> --file ppc64le.conda-lock.yml
+# this is still the wrong command
 ```
 
 Dependencies for <code>ppce64le</code> should go into the seperate <code>ppc64le.environment.yml</code> file. Use the following command to generate a new lockfile after updating the dependencies:
@@ -85,21 +86,51 @@ For fully reproducible environments and running on HPC clusters, we provide pre-
 ```bash
 docker build --tag <username>/<imagename>:<tag> --platform=linux/<amd64/ppc64le> .
 ```
+The specified username should be your personal [`dockerhub`](https://hub.docker.com) username. This will make distribution and reusage of your images more easy.
 
 ## Development
-We provide an example setup for a remote development environment on a GPU server using [VS Code](https://code.visualstudio.com/), [Remote - SSH](https://code.visualstudio.com/docs/remote/ssh), and [Dev Containers](https://code.visualstudio.com/docs/devcontainers/containers). This allows you to use the same environment for both development and production. For more details, see [here](https://code.visualstudio.com/docs/remote/remote-overview).
+Development for ML can be quite resource intensive. If possible, you can make use of a more powerful host machine to which you connect to with your local PC and start your development on.
 
-Before you can start successfully, you have to adapt `"runArgs": ["--ipc=host", "--gpus", "device=CHANGE_ME"]` and `"mounts": ["source=/CHANGE_ME/.cache,target=/mamba/.cache,type=bind"]` in [`.devcontainer/devcontainer.json`](.devcontainer/devcontainer.json). Additionally, you can set the `WANDB_API_KEY` in your remote environment; it will then be automatically mapped into the container.
+This workflow is simplified a lot by using [VS Code](https://code.visualstudio.com/) with the [Remote-SSH-](https://code.visualstudio.com/docs/remote/ssh), and [Dev Containers-Extension](https://code.visualstudio.com/docs/devcontainers/containers). For more details, see [here](https://code.visualstudio.com/docs/remote/remote-overview). Typically, you would want to connect to the host machine via `SSH` and then open your `DEV Container` afterwards. The template already contains a `.devcontainer` directory, where all the settings for it are stored in JSON-format.
+
+<details><summary>VS Code example</summary>
+
+<p>
+
+After having installed both extensions, you set up your `DEV Container` in the following way.
+
+1. Establish the SSH-connection with the host by opening your VS Code command pallet and typing <code>Remote-SSH: Connect to Host</code>. Now you can connect to your host machine.
+2. Open the folder that contains this template on the host machine.
+3. VS Code will automatically detect the `.devcontainer` directory and ask you to reopen the folder in a DEV-Container.
+4. Press `Reopen in Container' and wait for VS Code to set everything up.
+
+When using this workflow you will have to adapt `"runArgs": ["--ipc=host", "--gpus", "device=CHANGE_ME"]` in [`.devcontainer/devcontainer.json`](.devcontainer/devcontainer.json) and specify the GPU-devices you are actually going to use on the host-machine for your development.
+
+Additionally, you can set the `WANDB_API_KEY` in your remote environment; it will then be automatically mapped into the container.
+
+</p>
+</details>
+
+
 
 ## Training
 
-To start a language model MLM training, run:
+After all of this setup you are finally ready for some training. First of all, you need to create your data directory with a `train.txt` and your `dev.txt`. Then you can start a basic training with the following command and make sure everything works properly.   
 
 ```bash
-python train.py --data /path/to/data/dir --model roberta-base --gpus 2 --offline
+python train.py -n <runName> -d /path/to/data/dir --model roberta-base --device=1 --offline 
+# only use this to test your setup
+```
+This should create and start a training-run with the specified name in your current environment. Be aware that this is only useful when you wish to test your setup, because it uses no GPU's for training. When you are convinced everything is working as it should you can terminate the process early. 
+
+To create a training run with hardware-acceleration use the following command, where you specify which GPU's should be used.
+
+```bash
+python train.py -n <runName> -d /path/to/data/dir --model roberta-base --gpus 2 --offline
+# check if this actually works
 ```
 
-By default, `train.txt` and `dev.txt` are expected in the data directory. To see an overview over all options and their defaults, run `python train.py --help`.
+To see an overview over all options and their defaults, run `python train.py --help`.
 We have disabled Weights & Biases syncing with the `--offline` flag. To enable W&B, enter your `WANDB_ENTITY` and `WANDB_PROJECT` in [dlib/frameworks/wandb.py](dlib/frameworks/wandb.py) and simply omit the `--offline` flag.
 
 ### Using the Docker environment for training
@@ -107,15 +138,7 @@ To run the training code inside the docker environment, use a `docker run` comma
 ```bash
 docker run --rm -it --ipc=host --gpus='"device=0,1"' -v "($pwd)":/workspace -w /workspace -v /path/to/data:/data/in/container python train.py --gpus -1 ...
 ```
-The `--gpus='"device=0,1"'` flag (change this to use the GPUs you actually want) selects the GPUs with indices `0` and `1` for the container and `train.py --gpus -1` makes the training script use all available GPUs (which are only the ones selected with the docker flag). 
-
-<details><summary>Weights & Biases + Docker</summary>
-
-<p>
-
-Weights & Biases needs access to your `WANDB_API_KEY` to be able to log results. Either set `WANDB_API_KEY` on your host machine and use the `docker` flag `--env WANDB_API_KEY` or mount your `.netrc` file into the docker container like so: `-v ~/.netrc:~/.netrc`.
-</p>
-</details>
+The `--gpus='"device=0,1"'` flag (change this to use the GPUs you actually want) selects the GPUs with indices `0` and `1` for the container and `train.py --gpus -1` makes the training script use all available GPUs (which are only the ones selected with the docker flag).
 
 <details><summary>Using Docker with SLURM / <code>pyxis</code></summary>
 
@@ -132,6 +155,19 @@ This uses [`enroot`](https://github.com/NVIDIA/enroot) under the hood to import 
 If you want to run an interactive session with bash don't forget the `--pty` flag, otherwise the environment won't be activated properly.
 </p>
 </details>
+
+### Weights & Biases
+Weights & Biases is a platform that helps ml-researches to log their metrics for a training-run in an easy way. It lets you create checkpoints of your best models, can save the hyperparameters of your model and even supports Sweeps for parameter-optimization. For more information you can visit the [wandb](https://wandb.ai/site)-Website.
+
+<details><summary>Weights & Biases + Docker</summary>
+
+<p>
+
+If you plan on using Weights & Biases together with this template, it will need access to your `WANDB_API_KEY` to be able to log results. Either set `WANDB_API_KEY` on your host machine and use the `docker` flag `--env WANDB_API_KEY` when starting your run or mount your `.netrc` file into the docker container like so: `-v ~/.netrc:~/.netrc`.
+</p>
+</details>
+
+
 
 
 
