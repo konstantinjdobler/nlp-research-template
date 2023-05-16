@@ -99,7 +99,7 @@ We have disabled Weights & Biases syncing with the `--offline` flag. To enable W
 ### Using the Docker environment for training
 To run the training code inside the docker environment, use a `docker run` command like this:
 ```bash
-docker run --rm -it --ipc=host --gpus='"device=0,1"' -v "($pwd)":/workspace -w /workspace -v /path/to/data:/data/in/container python train.py --gpus -1 ...
+docker run --rm -it --ipc=host --gpus='"device=0,1"' -v "($pwd)":/workspace -w /workspace -v /path/to/data:/path/to/data konstantinjdobler/nlp-research-template:latest python train.py --gpus -1 ...
 ```
 The `--gpus='"device=0,1"'` flag (change this to use the GPUs you actually want) selects the GPUs with indices `0` and `1` for the container and `train.py --gpus -1` makes the training script use all available GPUs (which are only the ones selected with the docker flag). 
 
