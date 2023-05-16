@@ -121,7 +121,7 @@ After all of this setup you are finally ready for some training. First of all, y
 python train.py -n <runName> -d /path/to/data/dir --model roberta-base --device=1 --offline 
 # only use this to test your setup
 ```
-This should create and start a training-run with the specified name in your current environment. Be aware that this is only useful when you wish to test your setup, because it uses no GPU's for training. When you are convinced everything is working as it should you can terminate the process early. 
+This should create and start a training-run with the specified name in your current environment. Be aware that this is only useful to test your setup, because it uses no GPU's for training. When you are convinced everything is working as it should you can terminate the process early. 
 
 To create a training run with hardware-acceleration use the following command, where you specify which GPU's should be used.
 
