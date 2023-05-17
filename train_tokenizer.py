@@ -134,6 +134,7 @@ def bpe_huggingface_tokenizer(
             iterator=get_training_corpus(datasets, cutoff=training_cutoff),
             vocab_size=vocab_size,
             min_frequency=2,
+            show_progress=True,
             special_tokens=[
                 "<s>",
                 "<pad>",
@@ -146,8 +147,8 @@ def bpe_huggingface_tokenizer(
             ("</s>", bpe_tokenizer.token_to_id("</s>")),
             ("<s>", bpe_tokenizer.token_to_id("<s>")),
         )
-        trans_bpe_tokenizer = XLMRobertaTokenizerFast(tokenizer_object=bpe_tokenizer)
-        trans_bpe_tokenizer.save_pretrained(cache_path)
+        huggingface_bpe_tokenizer = XLMRobertaTokenizerFast(tokenizer_object=bpe_tokenizer)
+        huggingface_bpe_tokenizer.save_pretrained(cache_path)
 
     bpe_tokenizer = AutoTokenizer.from_pretrained(cache_path)
     total_tokens, num_samples, total_chars = eval_tokenizer(datasets, bpe_tokenizer)
