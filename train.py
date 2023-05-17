@@ -333,26 +333,16 @@ def main(parsed_arg_groups: tuple[TrainingArgs, MiscArgs]):
         )
 
         if args.resume_training:  # load weights, optimizer states, scheduler state, ...\
-            if current_process_rank == 0:
-                resume_ksamples = wandb_logger.experiment.summary[
-                    "progress/ksamples"
-                ]  # TODO: use ksamples from checkpoint instead of run summary
-                os.environ["DLIB_PROGRESS_KSAMPLES"] = str(resume_ksamples)
-            else:
-                # need to pass via env var because wandb_logger is only available on main process
-                resume_ksamples = float(os.environ["DLIB_PROGRESS_KSAMPLES"])
-
-            print("Resuming from", resume_ksamples)
             model = BasicLM.load_from_checkpoint(
                 args.checkpoint_path,
-                ksamples_processed=resume_ksamples,
                 effective_batch_size_per_step=effective_batch_size_per_step,
             )
-            print(model.hparams.ksamples_processed)
+            print(model.ksamples_processed)
         else:  # load only weights
             model = BasicLM(training_args=args, **model_extra_args)
             torch_load = torch.load(args.checkpoint_path, map_location=torch.device("cpu"))
             model.load_state_dict(torch_load["state_dict"], strict=False)
+            model.ksamples_processed = torch.tensor(0.0)
     else:
         model = BasicLM(training_args=args, **model_extra_args)
 
