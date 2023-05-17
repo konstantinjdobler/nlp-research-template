@@ -385,7 +385,7 @@ def main(parsed_arg_groups: tuple[TrainingArgs, MiscArgs]):
                 f"The current torch version ({torch.__version__}) does not have support for compile."  # noqa: E501
                 "Please install torch >= 2.0 or disable compile."
             )
-        model.model = torch.compile(model.model)
+        model = torch.compile(model)
 
     #################### Construct dataloaders & trainer #################
     dm = LMDataModule(training_args=args, misc_args=misc_args)
