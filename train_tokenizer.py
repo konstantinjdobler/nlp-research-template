@@ -113,7 +113,7 @@ def bpe_huggingface_tokenizer(
     training_cutoff: int = 50_000_000,
     overwrite_cache=False,
 ):
-    cache_path = f"./tokenizers/{tokenizer_lg_tag}/trans-bpe-{int(vocab_size/1000)}k"
+    cache_path = f"./tokenizers/{tokenizer_lg_tag}/bpe-{int(vocab_size/1000)}k"
     print(overwrite_cache)
     if not os.path.exists(cache_path) or overwrite_cache:
         print("\n", tokenizer_lg_tag, vocab_size)
