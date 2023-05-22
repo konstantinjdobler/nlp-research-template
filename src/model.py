@@ -38,7 +38,7 @@ class BasicLM(L.LightningModule):
     ) -> None:
         super().__init__()
         if not training_args.resume_training:
-            self.save_hyperparameters(ignore=["effective_batch_size_per_step"])
+            self.save_hyperparameters(ignore=["effective_batch_size_per_step", "ksamples_processed"])
         self.args = training_args
         self.adhoc_args = adhoc_args
         config = AutoConfig.from_pretrained(self.args.model_name_or_path, return_dict=True)
@@ -62,6 +62,7 @@ class BasicLM(L.LightningModule):
             logger.info("Training from scratch without pretrained weights")
 
         self.effective_batch_size_per_step = effective_batch_size_per_step
+        self.register_buffer("ksamples_processed", torch.tensor(ksamples_processed))
 
     def forward(self, x):
         return self.model(x).logits
