@@ -11,4 +11,4 @@ if [ "$current_directory" == "scripts" ]; then
   exit 1
 fi
 
-python train.py --gpus -1 --wandb_run_name="doesItWork" 
+python train.py --gpus -1 --wandb_run_name="runInDevContainer" 

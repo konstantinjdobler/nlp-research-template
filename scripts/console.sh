@@ -23,3 +23,4 @@ docker run -it \
     bash
 
 # the mounted cache folder has to exist somewhere, befor this script can be run
+# run the script with bash ./scripts/console.sh
