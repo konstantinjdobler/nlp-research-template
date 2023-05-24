@@ -13,13 +13,13 @@ fi
 
 docker run -it \
     --user $(id -u):$(id -g) \
-    --gpus='device=CHANGE_ME' \
+    --gpus='device=0' \
     --ipc host \
     --env WANDB_API_KEY \
-    -v "CHANGE_ME/cache:/home/mamba/.cache" \
+    -v "/scratch1/ozimmermann/cache:/home/mamba/.cache" \
     -v "$(pwd)":/workspace \
     -w /workspace \
-    DOCKER_TAG_CHANGE_ME \
+    nlp_template \
     bash
 
 # the mounted cache folder has to exist somewhere, befor this script can be run

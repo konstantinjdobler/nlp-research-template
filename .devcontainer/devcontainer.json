@@ -14,11 +14,10 @@
 	"runArgs": [
 		"--ipc=host",
 		"--gpus",
-		"device=CHANGE_ME"
+		"device=0"
 	],
-	// mount your cache folder in order to store preprocessed datasets or downloaded models
 	"mounts": [
-		"source=/CHANGE_ME/cache,target=/mamba/.cache,type=bind"
+		"source=/scratch1/ozimmermann/cache/,target=/home/mamba/.cache,type=bind"
 	],
 	"remoteEnv": {
 		"WANDB_API_KEY": "${localEnv:WANDB_API_KEY}"
