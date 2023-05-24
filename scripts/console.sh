@@ -12,6 +12,7 @@ if [ "$current_directory" == "scripts" ]; then
 fi
 
 docker run -it \
+    --user $(id -u):$(id -g) \
     --gpus='device=CHANGE_ME' \
     --ipc host \
     --env WANDB_API_KEY \
