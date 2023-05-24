@@ -123,15 +123,15 @@ python train.py -n <runName> -d /path/to/data/dir --model roberta-base --device=
 ```
 This should create and start a training-run with the specified name in your current environment. Be aware that this is only useful to test your setup, because it uses no GPU's for training. When you are convinced everything is working as it should you can terminate the process early. 
 
-To create a training run with hardware-acceleration use the following command, where you specify which GPU's should be used.
+To create a training run with hardware-acceleration use the following command, to use all available GPUs.
 
 ```bash
-python train.py -n <runName> -d /path/to/data/dir --model roberta-base --gpus 2 --offline
-# check if this actually works
+python train.py -n <runName> -d /path/to/data/dir --model roberta-base --gpus=-1 --offline
+# prefix with CUDA_VISIBLE_DEVICES=...
 ```
 
 To see an overview over all options and their defaults, run `python train.py --help`.
-We have disabled Weights & Biases syncing with the `--offline` flag. To enable W&B, enter your `WANDB_ENTITY` and `WANDB_PROJECT` in [dlib/frameworks/wandb.py](dlib/frameworks/wandb.py) and simply omit the `--offline` flag.
+We have disabled Weights & Biases syncing with the `--offline` flag. If you want to log your results, enable W&B as described [here](#weights--biases) and omit the `--offline` flag.
 
 ### Using the Docker environment for training
 To run the training code inside the docker environment, use a `docker run` command like this:
@@ -158,12 +158,13 @@ If you want to run an interactive session with bash don't forget the `--pty` fla
 
 ### Weights & Biases
 Weights & Biases is a platform that helps ml-researches to log their metrics for a training-run in an easy way. It lets you create checkpoints of your best models, can save the hyperparameters of your model and even supports Sweeps for parameter-optimization. For more information you can visit the [wandb](https://wandb.ai/site)-Website.
-
+To enable Weights & Biases, enter your `WANDB_ENTITY` and `WANDB_PROJECT` in [dlib/frameworks/wandb.py](dlib/frameworks/wandb.py).
 <details><summary>Weights & Biases + Docker</summary>
 
 <p>
 
-If you plan on using Weights & Biases together with this template, it will need access to your `WANDB_API_KEY` to be able to log results. Either set `WANDB_API_KEY` on your host machine and use the `docker` flag `--env WANDB_API_KEY` when starting your run or mount your `.netrc` file into the docker container like so: `-v ~/.netrc:~/.netrc`.
+ When using docker you also have to provide your `WANDB_API_KEY`. You can find your personal key at [wandb.ai/authorize](https://app.wandb.ai/authorize). Either set `WANDB_API_KEY` on your host machine and use the `docker` flag `--env WANDB_API_KEY` when starting your run or mount your `.netrc` file into the docker container like so: `-v ~/.netrc:~/.netrc`.
+
 </p>
 </details>
 
