@@ -130,6 +130,8 @@ docker run -it --user $(id -u):$(id -g) --gpus='device=0' --ipc=host -v "($pwd)"
 ```
 The `--gpus='device=0'` flag (change this to use the GPUs you actually want) selects the GPU with indice `0` for the container. Inside the container you can now execute your training-script as before.
 
+This template provides a shell script which you can use with `bash ./scripts/console.sh`, so you do not have to type this command out every time. Just remember to modify it accordingly, before you start your experiment.
+
 <details><summary>Using Docker with SLURM / <code>pyxis</code></summary>
 
 <p>
