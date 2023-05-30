@@ -91,22 +91,19 @@ docker build --tag <username>/<imagename>:<tag> --platform=linux/<amd64/ppc64le>
 The specified username should be your personal [`dockerhub`](https://hub.docker.com) username. This will make distribution and reusage of your images more easy.
 
 ## Development
-Development for ML can be quite resource intensive. If possible, you can make use of a more powerful host machine to which you connect to with your local PC and start your development on.
-
-This workflow is simplified a lot by using [VS Code](https://code.visualstudio.com/) with the [Remote-SSH-](https://code.visualstudio.com/docs/remote/ssh), and [Dev Containers-Extension](https://code.visualstudio.com/docs/devcontainers/containers). For more details, see [here](https://code.visualstudio.com/docs/remote/remote-overview). Typically, you would want to connect to the host machine via `SSH` and then open your `DEV Container` afterwards. The template already contains a `.devcontainer` directory, where all the settings for it are stored in JSON-format.
-
+Development for ML can be quite resource intensive. If possible, you can make use of a more powerful host machine to which you connect to with your local PC and start your development on. Normally, you would set up the correct environment on the host machine as explained above but this workflow is simplified a lot by using `VS Code Dev Containers`. They allow you to develop inside a docker container with all necessary dependencies pre-installed.  The template already contains a `.devcontainer` directory, where all the settings for it are stored, so you can start right away.
 <details><summary>VS Code example</summary>
 
 <p>
 
-After having installed both extensions, you set up your `DEV Container` in the following way.
+After having installed the [Remote-SSH-](https://code.visualstudio.com/docs/remote/ssh), and [Dev Containers-Extension](https://code.visualstudio.com/docs/devcontainers/containers), you set up your `DEV Container` in the following way.
 
 1. Establish the SSH-connection with the host by opening your VS Code command pallet and typing <code>Remote-SSH: Connect to Host</code>. Now you can connect to your host machine.
 2. Open the folder that contains this template on the host machine.
 3. VS Code will automatically detect the `.devcontainer` directory and ask you to reopen the folder in a DEV-Container.
 4. Press `Reopen in Container' and wait for VS Code to set everything up.
 
-When using this workflow you will have to adapt `"runArgs": ["--ipc=host", "--gpus", "device=CHANGE_ME"]` in [`.devcontainer/devcontainer.json`](.devcontainer/devcontainer.json) and specify the GPU-devices you are actually going to use on the host-machine for your development.
+When using this workflow you will have to adapt `"runArgs": ["--ipc=host", "--gpus", "device=CHANGE_ME"]` in [`.devcontainer/devcontainer.json`](.devcontainer/devcontainer.json) and specify the GPU-devices you are actually going to use on the host-machine for your development. Optionally you can mount cache files with `"mounts": ["source=/MY_HOME_DIR/.cache,target=/home/mamba/.cache,type=bind"]`.
 
 Additionally, you can set the `WANDB_API_KEY` in your remote environment; it will then be automatically mapped into the container.
 
