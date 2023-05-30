@@ -139,7 +139,7 @@ This template provides a shell script which you can use with `bash ./scripts/con
 For security reasons, `docker` might be disabled on your HPC cluster. You might be able to use the SLURM plugin `pyxis` instead like this:
 
 ```bash
-srun ... --container-image konstantinjdobler/nlp-research-template:torch2.0.0-cuda11.8 --container-name torch-cuda python train.py ...
+srun ... --container-image konstantinjdobler/nlp-research-template:latest --container-name torch-cuda python train.py ...
 ```
 
 This uses [`enroot`](https://github.com/NVIDIA/enroot) under the hood to import your docker image and run your code inside the container. See the [`pyxis` documentation](https://github.com/NVIDIA/pyxis) for more options, such as `--container-mounts` or `--container-writable`.
@@ -155,7 +155,7 @@ To enable Weights & Biases, enter your `WANDB_ENTITY` and `WANDB_PROJECT` in [dl
 
 <p>
 
- When using docker you also have to provide your `WANDB_API_KEY`. You can find your personal key at [wandb.ai/authorize](https://app.wandb.ai/authorize). Either set `WANDB_API_KEY` on your host machine and use the `docker` flag `--env WANDB_API_KEY` when starting your run or mount your `.netrc` file into the docker container like so: `-v ~/.netrc:~/.netrc`.
+ When using docker you also have to provide your `WANDB_API_KEY`. You can find your personal key at [wandb.ai/authorize](https://app.wandb.ai/authorize). Either set `WANDB_API_KEY` on your host machine and use the `docker` flag `--env WANDB_API_KEY` when starting your run or use wandb docker-run instead of docker run.
 
 </p>
 </details>
