@@ -63,11 +63,13 @@ For more advanced usage of environments (e.g. updating or removing environments)
 
 <p>
 
-If you wish to create an environment for a different architecture, you will need to use the packages suited for it. In the case of <code>ppc64le</code> this is a little bit tricky because the official channels do not provide packages compiled for it. However, we can use the amazing [Open-CE channel](https://ftp.osuosl.org/pub/open-ce/current/) instead. We prepared a lockfile containing the relevant dependencies already in <code>ppc64le.conda-lock.yml</code>.
+**If you're not using a PowerPC machine, do not worry about this.**
+
+Whenever you create an environment for a different processor architecture, you will need to use the packages suited for it. IBM PowerPC machines for example use a special processor architecture called <code>ppc64le</code>. 
+Setting up the environment therefore is slightly more tricky because the official channels do not provide packages compiled for <code>ppc64le</code>. However, we can use the amazing [Open-CE channel](https://ftp.osuosl.org/pub/open-ce/current/) instead. A lockfile containing the relevant dependencies is already prepared in <code>ppc64le.conda-lock.yml</code> and the environment again can be simply installed with:
 
 ```bash
-mamba lock install --name <gpt4> --file ppc64le.conda-lock.yml
-# this is still the wrong command
+mamba lock install --name gpt5-ppc64le ppc64le.conda-lock.yml
 ```
 
 Dependencies for <code>ppce64le</code> should go into the seperate <code>ppc64le.environment.yml</code> file. Use the following command to generate a new lockfile after updating the dependencies:
