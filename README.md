@@ -114,19 +114,10 @@ Additionally, you can set the `WANDB_API_KEY` in your remote environment; it wil
 
 ## Training
 
-After all of this setup you are finally ready for some training. First of all, you need to create your data directory with a `train.txt` and your `dev.txt`. Then you can start a basic training with the following command and make sure everything works properly.   
+After all of this setup you are finally ready for some training. First of all, you need to create your data directory with a `train.txt` and your `dev.txt`. Then you can start a training run in your environment with:
 
 ```bash
-python train.py -n <runName> -d /path/to/data/dir --model roberta-base --device=1 --offline 
-# only use this to test your setup
-```
-This should create and start a training-run with the specified name in your current environment. Be aware that this is only useful to test your setup, because it uses no GPU's for training. When you are convinced everything is working as it should you can terminate the process early. 
-
-To create a training run with hardware-acceleration use the following command, to use all available GPUs.
-
-```bash
-python train.py -n <runName> -d /path/to/data/dir --model roberta-base --gpus=-1 --offline
-# prefix with CUDA_VISIBLE_DEVICES=...
+python train.py --name <runName> -d /path/to/data/dir --model roberta-base --gpus=-1 --offline
 ```
 
 To see an overview over all options and their defaults, run `python train.py --help`.
