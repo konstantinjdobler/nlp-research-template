@@ -131,14 +131,14 @@ python train.py -n <runName> -d /path/to/data/dir --model roberta-base --gpus=-1
 ```
 
 To see an overview over all options and their defaults, run `python train.py --help`.
-We have disabled Weights & Biases syncing with the `--offline` flag. If you want to log your results, enable W&B as described [here](#weights--biases) and omit the `--offline` flag.
+We have disabled Weights & Biases syncing with the `--offline` flag. If you want to log your results, enable W&B as described [here](#weights--biases) and omit the `--offline` flag. We also set --gpus=-1 to use all GPU's available.
 
 ### Using the Docker environment for training
 To run the training code inside the docker environment, use a `docker run` command like this:
 ```bash
-docker run --rm -it --ipc=host --gpus='"device=0,1"' -v "($pwd)":/workspace -w /workspace -v /path/to/data:/data/in/container python train.py --gpus -1 ...
+docker run -it --user $(id -u):$(id -g) --gpus='device=0' --ipc=host -v "($pwd)":/workspace -w /workspace imagename bash
 ```
-The `--gpus='"device=0,1"'` flag (change this to use the GPUs you actually want) selects the GPUs with indices `0` and `1` for the container and `train.py --gpus -1` makes the training script use all available GPUs (which are only the ones selected with the docker flag).
+The `--gpus='device=0'` flag (change this to use the GPUs you actually want) selects the GPU with indice `0` for the container. Inside the container you can now execute your training-script as before.
 
 <details><summary>Using Docker with SLURM / <code>pyxis</code></summary>
 
