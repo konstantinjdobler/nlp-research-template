@@ -42,18 +42,22 @@ mamba lock --update <package-name> # update specific packages in lockfile
 
 Lockfiles are an easy way to **exactly** reproduce an environment.
 
-After having installed `mamba` and `conda-lock`, you can create lockfiles from a `environment.yml` file, simply by running `mamba lock` in the same working directory.
+After having installed `mamba` and `conda-lock`, you can create a `mamba` environment named `gpt5` from a lockfile with all necessary dependencies installed like this:
 
 To create a new `mamba` environment with all necessary dependencies installed from such a lockfile , run:
 
 ```bash
-mamba lock install --name <environmentName>
+mamba lock install --name gpt5 conda-lock.yml
 ```
+
 You can then activate your environment with
 ```bash
-mamba activate <environmentName>
+mamba activate gpt5
 ```
-For more commands (e.g. updating or removing environments) have a look at the [conda-documentation](https://conda.io/projects/conda/en/latest/user-guide/tasks/manage-environments.html#removing-an-environment).
+
+To generate new lockfiles after updating the `environment.yml` file, simply run `mamba lock` in the directory with your `environment.yml` file.
+
+For more advanced usage of environments (e.g. updating or removing environments) have a look at the [conda-documentation](https://conda.io/projects/conda/en/latest/user-guide/tasks/manage-environments.html#removing-an-environment).
 
 <details><summary>Setup on <code>ppc64le</code></summary>
 
