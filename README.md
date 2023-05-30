@@ -44,8 +44,6 @@ Lockfiles are an easy way to **exactly** reproduce an environment.
 
 After having installed `mamba` and `conda-lock`, you can create a `mamba` environment named `gpt5` from a lockfile with all necessary dependencies installed like this:
 
-To create a new `mamba` environment with all necessary dependencies installed from such a lockfile , run:
-
 ```bash
 mamba lock install --name gpt5 conda-lock.yml
 ```
