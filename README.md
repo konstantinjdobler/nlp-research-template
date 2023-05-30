@@ -21,26 +21,22 @@ curl -L -O "https://github.com/conda-forge/miniforge/releases/latest/download/Ma
 bash Mambaforge-$(uname)-$(uname -m).sh
 ```
 
-<details><summary>using Windows</summary>
-
-<p>
-
-When installing Mamba on Windows you will need to add its Script-folder to your **PATH** environment variable. This folder is by default located at 
-```bash
-C:\Users\user\mambaforge\Scripts
-```
-Afterwards, you will be able to run `mamba` commands simply from your command line. Note that you might not be able to activate your created environments within `powershell`. A simple workaround would be to use `cmd` instead.
-</details>
-
 </details>
 
 <details><summary>Installing <code>conda-lock</code></summary>
 
 <p>
 
-The preferred method is to install conda-lock into your `mamba` / `conda` `base` environment using `mamba install -c conda-forge -n base conda-lock`. Then, you can access conda-lock via the automatic subcommand discovery (e.g. `mamba lock --version`). Otherwise, visit the [conda-lock repo](https://github.com/conda/conda-lock).
+The preferred method is to install conda-lock into your `mamba` / `conda` `base` environment using `mamba install -c conda-forge -n base conda-lock`. Then, you can access conda-lock via the automatic subcommand discovery (e.g. `mamba lock --version`). Otherwise, visit the [conda-lock repo](https://github.com/conda/conda-lock). For basic usage, have a look at the commands below:
+
+```bash
+mamba lock install --name gpt5 conda-lock.yml # create environment with name gpt5 based on lockfile
+mamba lock # create new lockfile based on environment.yml
+mamba lock --update <package-name> # update specific packages in lockfile
+```
 
 </details>
+
 
 ### Environment
 
