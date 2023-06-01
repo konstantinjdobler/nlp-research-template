@@ -86,7 +86,7 @@ For fully reproducible environments and running on HPC clusters, we provide pre-
 ```bash
 docker build --tag <username>/<imagename>:<tag> --platform=linux/<amd64/ppc64le> .
 ```
-The specified username should be your personal [`dockerhub`](https://hub.docker.com) username. This will make distribution and reusage of your images more easy.
+The specified username should be your personal [`dockerhub`](https://hub.docker.com) username. This will make distribution and reusage of your images easier.
 
 ## Development
 Development for ML can be quite resource intensive. If possible, you can make use of a more powerful host machine to which you connect to with your local PC and start your development on. Normally, you would set up the correct environment on the host machine as explained above but this workflow is simplified a lot by using `VS Code Dev Containers`. They allow you to develop inside a docker container with all necessary dependencies pre-installed.  The template already contains a `.devcontainer` directory, where all the settings for it are stored, so you can start right away.
