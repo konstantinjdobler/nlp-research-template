@@ -137,7 +137,7 @@ This template provides a shell script which you can use with `bash ./scripts/con
 For security reasons, `docker` might be disabled on your HPC cluster. You might be able to use the SLURM plugin `pyxis` instead like this:
 
 ```bash
-srun ... --container-image konstantinjdobler/nlp-research-template:latest --container-name torch-cuda python train.py ...
+srun ... --container-image konstantinjdobler/nlp-research-template:latest python train.py ...
 ```
 
 This uses [`enroot`](https://github.com/NVIDIA/enroot) under the hood to import your docker image and run your code inside the container. See the [`pyxis` documentation](https://github.com/NVIDIA/pyxis) for more options, such as `--container-mounts` or `--container-writable`.
