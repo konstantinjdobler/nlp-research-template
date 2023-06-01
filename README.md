@@ -44,8 +44,6 @@ Lockfiles are an easy way to **exactly** reproduce an environment.
 
 After having installed `mamba` and `conda-lock`, you can create a `mamba` environment named `gpt5` from a lockfile with all necessary dependencies installed like this:
 
-To create a new `mamba` environment with all necessary dependencies installed from such a lockfile , run:
-
 ```bash
 mamba lock install --name gpt5 conda-lock.yml
 ```
@@ -126,9 +124,9 @@ We have disabled Weights & Biases syncing with the `--offline` flag. If you want
 ### Using the Docker environment for training
 To run the training code inside the docker environment, use a `docker run` command like this:
 ```bash
-docker run -it --gpus='device=0' --ipc=host -v "($pwd)":/workspace -w /workspace imagename bash
+docker run -it --gpus='device=0' --ipc=host -v "($pwd)":/workspace -w /workspace <IMAGENAME> bash
 ```
-The `--gpus='device=0'` flag (change this to use the GPUs you actually want) selects the GPU with indice `0` for the container. Inside the container you can now execute your training-script as before.
+The `--gpus='device=0'` flag (change this to use the GPUs you actually want) selects the GPU with index `0` for the container. Inside the container you can now execute your training-script as before.
 
 This template provides a shell script which you can use with `bash ./scripts/console.sh`, so you do not have to type this command out every time. Just remember to modify it accordingly, before you start your experiment.
 
