@@ -126,7 +126,7 @@ We have disabled Weights & Biases syncing with the `--offline` flag. If you want
 ### Using the Docker environment for training
 To run the training code inside the docker environment, use a `docker run` command like this:
 ```bash
-docker run -it --user $(id -u):$(id -g) --gpus='device=0' --ipc=host -v "($pwd)":/workspace -w /workspace imagename bash
+docker run -it --gpus='device=0' --ipc=host -v "($pwd)":/workspace -w /workspace imagename bash
 ```
 The `--gpus='device=0'` flag (change this to use the GPUs you actually want) selects the GPU with indice `0` for the container. Inside the container you can now execute your training-script as before.
 

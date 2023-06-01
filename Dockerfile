@@ -114,9 +114,6 @@ RUN chown $MAMBA_USER:$MAMBA_USER /locks/conda-lock.yml
 # Provide conda alias for micromamba
 RUN echo "alias conda=micromamba" >> /usr/local/bin/_activate_current_env.sh
 
-# Give permission to everyone for e.g. caching
-RUN mkdir /home/mamba/.cache && chmod -R 777 /home/mamba/.cache/
-
 # Switch back to micromamba user
 USER $MAMBA_USER
 ARG TARGETPLATFORM
