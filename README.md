@@ -147,7 +147,7 @@ If you want to run an interactive session with bash don't forget the `--pty` fla
 </details>
 
 ### Weights & Biases
-Weights & Biases is a platform that helps ml-researches to log their metrics for a training-run in an easy way. It lets you create checkpoints of your best models, can save the hyperparameters of your model and even supports Sweeps for parameter-optimization. For more information you can visit the [wandb](https://wandb.ai/site)-Website.
+Weights & Biases is a platform that provides an easy way to log training results for ML researchers. It lets you create checkpoints of your best models, can save the hyperparameters of your model and even supports Sweeps for hyperparameter optimization. For more information you can visit the [wandb](https://wandb.ai/site)-Website.
 To enable Weights & Biases, enter your `WANDB_ENTITY` and `WANDB_PROJECT` in [dlib/frameworks/wandb.py](dlib/frameworks/wandb.py).
 <details><summary>Weights & Biases + Docker</summary>
 
