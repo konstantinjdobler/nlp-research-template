@@ -1,6 +1,6 @@
 # An opinionated template for NLP research code
 
-[![Docker Hub](https://img.shields.io/docker/v/konstantinjdobler/nlp-research-template/torch2.0.0-cuda11.8?color=blue&label=docker&logo=docker)](https://hub.docker.com/r/konstantinjdobler/nlp-research-template/tags) [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black) ![License: MIT](https://img.shields.io/github/license/konstantinjdobler/nlp-research-template?color=green)
+[![Docker Hub](https://img.shields.io/docker/v/konstantinjdobler/nlp-research-template/latest?color=blue&label=docker&logo=docker)](https://hub.docker.com/r/konstantinjdobler/nlp-research-template/tags) [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black) ![License: MIT](https://img.shields.io/github/license/konstantinjdobler/nlp-research-template?color=green)
 
 NLP research template for training language models from scratch using PyTorch + PyTorch Lightning + Weights & Biases + HuggingFace. It's built to be customized but provides comprehensive, sensible default functionality.
 
@@ -84,7 +84,7 @@ mamba lock --file ppc64le.environment.yml --lockfile ppc64le.conda-lock.yml
 For fully reproducible environments and running on HPC clusters, we provide pre-built docker images at [konstantinjdobler/nlp-research-template](https://hub.docker.com/r/konstantinjdobler/nlp-research-template/tags). We also provide a `Dockerfile` that allows you to build new docker images with updated dependencies:
 
 ```bash
-docker build --tag <username>/<imagename>:<tag> --platform=linux/<amd64/ppc64le> .
+docker build --tag <username>/<imagename>:<tag> --platform=linux/ppc64le .
 ```
 The specified username should be your personal [`dockerhub`](https://hub.docker.com) username. This will make distribution and reusage of your images easier.
 
@@ -107,8 +107,6 @@ Additionally, you can set the `WANDB_API_KEY` in your remote environment; it wil
 
 </p>
 </details>
-
-
 
 ## Training
 
@@ -137,7 +135,7 @@ This template provides a shell script which you can use with `bash ./scripts/con
 For security reasons, `docker` might be disabled on your HPC cluster. You might be able to use the SLURM plugin `pyxis` instead like this:
 
 ```bash
-srun ... --container-image konstantinjdobler/nlp-research-template:latest python train.py ...
+srun ... --container-image konstantinjdobler/nlp-research-template:latest --container-name torch-cuda python train.py ...
 ```
 
 This uses [`enroot`](https://github.com/NVIDIA/enroot) under the hood to import your docker image and run your code inside the container. See the [`pyxis` documentation](https://github.com/NVIDIA/pyxis) for more options, such as `--container-mounts` or `--container-writable`.

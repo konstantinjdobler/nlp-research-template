@@ -38,7 +38,7 @@ class BasicLM(L.LightningModule):
     ) -> None:
         super().__init__()
         if not training_args.resume_training:
-            self.save_hyperparameters(ignore=["effective_batch_size_per_step"])
+            self.save_hyperparameters(ignore=["effective_batch_size_per_step", "ksamples_processed"])
         self.args = training_args
         self.adhoc_args = adhoc_args
         config = AutoConfig.from_pretrained(self.args.model_name_or_path, return_dict=True)
@@ -62,6 +62,7 @@ class BasicLM(L.LightningModule):
             logger.info("Training from scratch without pretrained weights")
 
         self.effective_batch_size_per_step = effective_batch_size_per_step
+        self.register_buffer("ksamples_processed", torch.tensor(ksamples_processed))
 
     def forward(self, x):
         return self.model(x).logits
@@ -72,10 +73,10 @@ class BasicLM(L.LightningModule):
         return loss
 
     def on_train_batch_end(self, outputs, batch, batch_idx, unused=0) -> None:
-        self.hparams.ksamples_processed += self.effective_batch_size_per_step / 1000
+        self.ksamples_processed += self.effective_batch_size_per_step / 1000
         self.log(
             "progress/ksamples",
-            self.hparams.ksamples_processed,
+            self.ksamples_processed,
             rank_zero_only=True,
             on_step=True,
             on_epoch=False,
@@ -85,7 +86,7 @@ class BasicLM(L.LightningModule):
         loss = self.model(**batch).loss
 
         self.log_dict(
-            {"val/loss": loss, "progress/ksamples": self.hparams.ksamples_processed},
+            {"val/loss": loss, "progress/ksamples": self.ksamples_processed},
             on_step=False,
             on_epoch=True,
             sync_dist=True,

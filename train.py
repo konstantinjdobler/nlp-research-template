@@ -283,10 +283,13 @@ def main(parsed_arg_groups: tuple[TrainingArgs, MiscArgs]):
     for arg_group in parsed_arg_groups:
         wandb_logger.log_hyperparams(dataclasses.asdict(arg_group))
 
-    if current_process_rank == 0 and not args.resume_training:
-        wandb_logger.experiment.name = (
-            misc_args.wandb_run_name + "-" + wandb_logger.version
-        )  # Append id to name for easier recognition in W&B UI
+    if current_process_rank == 0 and not args.resume_training and not misc_args.offline:
+        if misc_args.wandb_run_name is None:
+            logger.warning("No run name specified with `--wandb_run_name`. Using W&B default (randomly generated name).")
+        else:
+            wandb_logger.experiment.name = (
+                misc_args.wandb_run_name + "-" + wandb_logger.version
+            )  # Append id to name for easier recognition in W&B UI
 
     ########### Calulate training constants ###########
     KSAMPLES = 1000
@@ -330,26 +333,16 @@ def main(parsed_arg_groups: tuple[TrainingArgs, MiscArgs]):
         )
 
         if args.resume_training:  # load weights, optimizer states, scheduler state, ...\
-            if current_process_rank == 0:
-                resume_ksamples = wandb_logger.experiment.summary[
-                    "progress/ksamples"
-                ]  # TODO: use ksamples from checkpoint instead of run summary
-                os.environ["DLIB_PROGRESS_KSAMPLES"] = str(resume_ksamples)
-            else:
-                # need to pass via env var because wandb_logger is only available on main process
-                resume_ksamples = float(os.environ["DLIB_PROGRESS_KSAMPLES"])
-
-            print("Resuming from", resume_ksamples)
             model = BasicLM.load_from_checkpoint(
                 args.checkpoint_path,
-                ksamples_processed=resume_ksamples,
                 effective_batch_size_per_step=effective_batch_size_per_step,
             )
-            print(model.hparams.ksamples_processed)
+            print(model.ksamples_processed)
         else:  # load only weights
             model = BasicLM(training_args=args, **model_extra_args)
             torch_load = torch.load(args.checkpoint_path, map_location=torch.device("cpu"))
             model.load_state_dict(torch_load["state_dict"], strict=False)
+            model.ksamples_processed = torch.tensor(0.0)
     else:
         model = BasicLM(training_args=args, **model_extra_args)
 
@@ -382,7 +375,7 @@ def main(parsed_arg_groups: tuple[TrainingArgs, MiscArgs]):
                 f"The current torch version ({torch.__version__}) does not have support for compile."  # noqa: E501
                 "Please install torch >= 2.0 or disable compile."
             )
-        model.model = torch.compile(model.model)
+        model = torch.compile(model)
 
     #################### Construct dataloaders & trainer #################
     dm = LMDataModule(training_args=args, misc_args=misc_args)
