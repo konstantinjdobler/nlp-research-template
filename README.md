@@ -94,7 +94,7 @@ Development for ML can be quite resource intensive. If possible, you can start y
 
 <p>
 
-After having installed the [Remote-SSH-](https://code.visualstudio.com/docs/remote/ssh), and [Dev Containers-Extension](https://code.visualstudio.com/docs/devcontainers/containers), you set up your `DEV Container` in the following way.
+After having installed the [Remote-SSH-](https://code.visualstudio.com/docs/remote/ssh), and [Dev Containers-Extension](https://code.visualstudio.com/docs/devcontainers/containers), you set up your `DEV Container` in the following way:
 
 1. Establish the SSH-connection with the host by opening your VS Code command pallet and typing <code>Remote-SSH: Connect to Host</code>. Now you can connect to your host machine.
 2. Open the folder that contains this template on the host machine.
