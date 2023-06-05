@@ -15,8 +15,10 @@ docker run -it \
     --gpus='device=CHANGE_ME' \
     --ipc host \
     --env WANDB_API_KEY \
-    -v "source=/CHANGE_ME/.cache,target=/mamba/.cache,type=bind" \
+    -v "CHANGE_ME/cache:/home/mamba/.cache" \
     -v "$(pwd)":/workspace \
     -w /workspace \
     DOCKER_TAG_CHANGE_ME \
     bash
+
+# the mounted cache folder has to exist somewhere, before this script can be run

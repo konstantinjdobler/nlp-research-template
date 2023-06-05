@@ -6,17 +6,29 @@
 		// Sets the run context to one level up instead of the .devcontainer folder.
 		"context": "..",
 		// Update the 'dockerFile' property if you aren't using the standard 'Dockerfile' filename.
-		"dockerfile": "../Dockerfile"
+		"dockerfile": "../Dockerfile",
+		"args": {
+			"OS_SELECTOR": "ubuntu" // force ubuntu base OS for devcontainer
+		}
 	},
-	"runArgs": ["--ipc=host","--gpus","device=CHANGE_ME"],
-	"mounts": ["source=/CHANGE_ME/.cache,target=/mamba/.cache,type=bind"],
-	"remoteEnv":{
+	"runArgs": [
+		"--ipc=host",
+		"--gpus",
+		"device=CHANGE_ME"
+	],
+	// Optionally mount cache files like HuggingFace datasets cache. The user directory inside the container is /home/mamba/
+	// "mounts": [
+	// 	"source=/MY_HOME_DIR/.cache,target=/home/mamba/.cache,type=bind"
+	// ],
+	"remoteEnv": {
 		"WANDB_API_KEY": "${localEnv:WANDB_API_KEY}"
 	},
 	// Features to add to the dev container. More info: https://containers.dev/features.
 	"features": {
 		"ghcr.io/devcontainers/features/git:1.1.5": {},
-		// "ghcr.io/devcontainers-contrib/features/flake8:2.0.13": {} // Not working currently
+		"ghcr.io/devcontainers-contrib/features/flake8:2": {},
+		"ghcr.io/devcontainers-contrib/features/black:2": {},
+		"ghcr.io/devcontainers-contrib/features/isort:2": {}
 	},
 	"customizations": {
 		// Configure properties specific to VS Code.
@@ -29,14 +41,14 @@
 				"percy.vscode-pydata-viewer",
 				"kevinrose.vsc-python-indent",
 				"njqdev.vscode-python-typehint",
-				"ms-python.flake",
-				"foxundermoon.shell-format"
+				"ms-python.flake8",
+				"foxundermoon.shell-format",
+				"ms-azuretools.vscode-docker"
 			]
 		}
 	},
 	// Currently not functioning so we have to install development tools already in the dockerfile for now
 	// "postCreateCommand": "apt-get update && apt-get install openssh-client nano -y"
-
 	// Use 'forwardPorts' to make a list of ports inside the container available locally.
 	// "forwardPorts": []
 }
