@@ -76,14 +76,27 @@ For fully reproducible environments and running on HPC clusters, we provide pre-
 ```bash
 docker build --tag <username>/<imagename>:<tag> --platform=linux/ppc64le .
 ```
+The specified username should be your personal [`dockerhub`](https://hub.docker.com) username. This will make distribution and reusage of your images easier.
 
 ## Development
-For development, you can just use the `mamba` environment as explained above. Alternatively, you can use [VS Code](https://code.visualstudio.com/) [Dev Containers](https://code.visualstudio.com/docs/remote/devcontainers/containers) with the [Remote - SSH](https://code.visualstudio.com/docs/remote/ssh) package to develop inside a docker container with all necessary dependencies pre-installed. This allows you to use the same environment for both development and production. Using devcontainers is especially useful for development on a remote machine like a GPU node. For more details, see [here](https://code.visualstudio.com/docs/remote/advancedcontainers/develop-remote-host).
+Development for ML can be quite resource intensive. If possible, you can start your development on a more powerful host machine to which you connect to from your local PC. Normally, you would set up the correct environment on the host machine as explained above but this workflow is simplified a lot by using `VS Code Dev Containers`. They allow you to develop inside a docker container with all necessary dependencies pre-installed.  The template already contains a `.devcontainer` directory, where all the settings for it are stored, so you can start right away.
+<details><summary>VS Code example</summary>
 
-Before you can start a devcontainer successfully, you have to adapt `"runArgs": ["--ipc=host", "--gpus", "device=CHANGE_ME"]` and optionally mount cache files like datasets etc. with `"mounts": ["source=/MY_HOME_DIR/.cache,target=/home/mamba/.cache,type=bind"]` in [`.devcontainer/devcontainer.json`](.devcontainer/devcontainer.json).  We recommend to **not** share the `.cache` folder with other users on the same host due to permission issues.
+<p>
 
+After having installed the [Remote-SSH-](https://code.visualstudio.com/docs/remote/ssh), and [Dev Containers-Extension](https://code.visualstudio.com/docs/devcontainers/containers), you set up your `DEV Container` in the following way:
+
+1. Establish the SSH-connection with the host by opening your VS Code command pallet and typing <code>Remote-SSH: Connect to Host</code>. Now you can connect to your host machine.
+2. Open the folder that contains this template on the host machine.
+3. VS Code will automatically detect the `.devcontainer` directory and ask you to reopen the folder in a DEV-Container.
+4. Press `Reopen in Container' and wait for VS Code to set everything up.
+
+When using this workflow you will have to adapt `"runArgs": ["--ipc=host", "--gpus", "device=CHANGE_ME"]` in [`.devcontainer/devcontainer.json`](.devcontainer/devcontainer.json) and specify the GPU-devices you are actually going to use on the host machine for your development. Optionally you can mount cache files with `"mounts": ["source=/MY_HOME_DIR/.cache,target=/home/mamba/.cache,type=bind"]`.
 
 Additionally, you can set the `WANDB_API_KEY` in your remote environment; it will then be automatically mapped into the container.
+
+</p>
+</details>
 
 ## Training
 
@@ -99,13 +112,10 @@ We have disabled Weights & Biases syncing with the `--offline` flag. To enable W
 ### Using the Docker environment for training
 To run the training code inside the docker environment, use a `docker run` command like this:
 ```bash
-docker run --rm -it --ipc=host --gpus='"device=0,1"' -v "$(pwd)":/workspace -w /workspace -v /path/to/data:/path/to/data konstantinjdobler/nlp-research-template:latest python train.py --gpus -1 ...
+
+docker run -it --gpus='device=0' --ipc=host -v "($pwd)":/workspace -w /workspace <IMAGENAME> bash
 ```
-The `--gpus='"device=0,1"'` flag (change this to use the GPUs you actually want) selects the GPUs with indices `0` and `1` for the container and `train.py --gpus -1` makes the training script use all available GPUs (which are only the ones selected with the docker flag). 
-
-<details><summary>Weights & Biases + Docker</summary>
-
-<p>
+The `--gpus='device=0'` flag (change this to use the GPUs you actually want) selects the GPU with index `0` for the container. Inside the container you can now execute your training script as before.
 
 Weights & Biases needs access to your `WANDB_API_KEY` to be able to log results. Either set `WANDB_API_KEY` on your host machine and use the `docker` flag `--env WANDB_API_KEY` or use `wandb docker-run` instead of `docker run`.
 </p>
@@ -124,5 +134,18 @@ srun ... --container-image konstantinjdobler/nlp-research-template:latest --cont
 This uses [`enroot`](https://github.com/NVIDIA/enroot) under the hood to import your docker image and run your code inside the container. See the [`pyxis` documentation](https://github.com/NVIDIA/pyxis) for more options, such as `--container-mounts` or `--container-writable`.
 
 If you want to run an interactive session with bash don't forget the `--pty` flag, otherwise the environment won't be activated properly.
+</p>
+</details>
+
+
+### Weights & Biases
+Weights & Biases is a platform that provides an easy way to log training results for ML researchers. It lets you create checkpoints of your best models, can save the hyperparameters of your model and even supports Sweeps for hyperparameter optimization. For more information you can visit the [wandb](https://wandb.ai/site)-Website.
+To enable Weights & Biases, enter your `WANDB_ENTITY` and `WANDB_PROJECT` in [dlib/frameworks/wandb.py](dlib/frameworks/wandb.py).
+<details><summary>Weights & Biases + Docker</summary>
+
+<p>
+
+ When using docker you also have to provide your `WANDB_API_KEY`. You can find your personal key at [wandb.ai/authorize](https://app.wandb.ai/authorize). Either set `WANDB_API_KEY` on your host machine and use the `docker` flag `--env WANDB_API_KEY` when starting your run or use wandb docker-run instead of docker run.
+
 </p>
 </details>
