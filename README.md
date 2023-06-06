@@ -27,20 +27,17 @@ bash Mambaforge-$(uname)-$(uname -m).sh
 
 <p>
 
-The preferred method is to install conda-lock into your `mamba` / `conda` `base` environment using `mamba install -c conda-forge -n base conda-lock`. Then, you can access conda-lock via the automatic subcommand discovery (e.g. `mamba lock --version`). Otherwise, visit the [conda-lock repo](https://github.com/conda/conda-lock). For basic usage, have a look at the commands below:
+The preferred method is to install conda-lock into your `mamba` / `conda` `base` environment using `mamba install -c conda-forge -n base conda-lock`. Then, you can access conda-lock via the automatic subcommand discovery (e.g. `mamba lock --version`). Otherwise, visit the [conda-lock repo](https://github.com/conda/conda-lock).
 
 ```bash
-mamba lock install --name gpt5 conda-lock.yml # create environment with name gpt5 based on lockfile
+mamba lock install --name gpt5 conda-lock.yml # create environment based on lockfile
 mamba lock # create new lockfile based on environment.yml
 mamba lock --update <package-name> # update specific packages in lockfile
 ```
 
 </details>
 
-
 ### Environment
-
-Lockfiles are an easy way to **exactly** reproduce an environment.
 
 After having installed `mamba` and `conda-lock`, you can create a `mamba` environment named `gpt5` from a lockfile with all necessary dependencies installed like this:
 
@@ -48,26 +45,19 @@ After having installed `mamba` and `conda-lock`, you can create a `mamba` enviro
 mamba lock install --name gpt5 conda-lock.yml
 ```
 
-You can then activate your environment with
-```bash
-mamba activate gpt5
-```
+That's it -- this is the power of lockfiles.
 
-To generate new lockfiles after updating the `environment.yml` file, simply run `mamba lock` in the directory with your `environment.yml` file.
-
-For more advanced usage of environments (e.g. updating or removing environments) have a look at the [conda-documentation](https://conda.io/projects/conda/en/latest/user-guide/tasks/manage-environments.html#removing-an-environment).
+To generate new lockfiles after updating the `environment.yml` file, simply run `mamba lock`.
 
 <details><summary>Setup on <code>ppc64le</code></summary>
 
 <p>
 
-**If you're not using a PowerPC machine, do not worry about this.**
-
-Whenever you create an environment for a different processor architecture, you will need to use the packages suited for it. IBM PowerPC machines for example use a special processor architecture called <code>ppc64le</code>. 
-Setting up the environment therefore is slightly more tricky because the official channels do not provide packages compiled for <code>ppc64le</code>. However, we can use the amazing [Open-CE channel](https://ftp.osuosl.org/pub/open-ce/current/) instead. A lockfile containing the relevant dependencies is already prepared in <code>ppc64le.conda-lock.yml</code> and the environment again can be simply installed with:
+IBM PowerPC machines use a special processor architecture called <code>ppc64le</code>. If you're not using a PowerPC machine, do not worry about this.
+Setting up the envronment is slightly more tricky because the official channels do not provide packages compiled for <code>ppc64le</code>. However, we can use the amazing [Open-CE channel](https://ftp.osuosl.org/pub/open-ce/current/) instead. A lockfile containing the relevant dependencies is already prepared in <code>ppc64le.conda-lock.yml</code>.
 
 ```bash
-mamba lock install --name gpt5-ppc64le ppc64le.conda-lock.yml
+mamba lock install --name <gpt4> ppc64le.conda-lock.yml
 ```
 
 Dependencies for <code>ppce64le</code> should go into the seperate <code>ppc64le.environment.yml</code> file. Use the following command to generate a new lockfile after updating the dependencies:
@@ -110,23 +100,26 @@ Additionally, you can set the `WANDB_API_KEY` in your remote environment; it wil
 
 ## Training
 
-After all of this setup you are finally ready for some training. First of all, you need to create your data directory with a `train.txt` and your `dev.txt`. Then you can start a training run in your environment with:
+To start a language model MLM training, run:
 
 ```bash
-python train.py --name <runName> -d /path/to/data/dir --model roberta-base --gpus=-1 --offline
+python train.py -d /path/to/data/dir --model roberta-base --gpus 2 --offline -n test-run
 ```
 
-To see an overview over all options and their defaults, run `python train.py --help`.
-We have disabled Weights & Biases syncing with the `--offline` flag. If you want to log your results, enable W&B as described [here](#weights--biases) and omit the `--offline` flag. We also set --gpus=-1 to use all GPU's available.
+By default, `train.txt` and `dev.txt` are expected in the data directory. To see an overview over all options and their defaults, run `python train.py --help`.
+We have disabled Weights & Biases syncing with the `--offline` flag. To enable W&B, enter your `WANDB_ENTITY` and `WANDB_PROJECT` in [dlib/frameworks/wandb.py](dlib/frameworks/wandb.py) and simply omit the `--offline` flag. Assigning each experiment a fitting name with `-n` is recommended.
 
 ### Using the Docker environment for training
 To run the training code inside the docker environment, use a `docker run` command like this:
 ```bash
+
 docker run -it --gpus='device=0' --ipc=host -v "($pwd)":/workspace -w /workspace <IMAGENAME> bash
 ```
 The `--gpus='device=0'` flag (change this to use the GPUs you actually want) selects the GPU with index `0` for the container. Inside the container you can now execute your training script as before.
 
-This template provides a shell script which you can use with `bash ./scripts/console.sh`, so you do not have to type this command out every time. Just remember to modify it accordingly, before you start your experiment.
+Weights & Biases needs access to your `WANDB_API_KEY` to be able to log results. Either set `WANDB_API_KEY` on your host machine and use the `docker` flag `--env WANDB_API_KEY` or use `wandb docker-run` instead of `docker run`.
+</p>
+</details>
 
 <details><summary>Using Docker with SLURM / <code>pyxis</code></summary>
 
@@ -144,6 +137,7 @@ If you want to run an interactive session with bash don't forget the `--pty` fla
 </p>
 </details>
 
+
 ### Weights & Biases
 Weights & Biases is a platform that provides an easy way to log training results for ML researchers. It lets you create checkpoints of your best models, can save the hyperparameters of your model and even supports Sweeps for hyperparameter optimization. For more information you can visit the [wandb](https://wandb.ai/site)-Website.
 To enable Weights & Biases, enter your `WANDB_ENTITY` and `WANDB_PROJECT` in [dlib/frameworks/wandb.py](dlib/frameworks/wandb.py).
@@ -155,10 +149,3 @@ To enable Weights & Biases, enter your `WANDB_ENTITY` and `WANDB_PROJECT` in [dl
 
 </p>
 </details>
-
-
-
-
-
-
-
