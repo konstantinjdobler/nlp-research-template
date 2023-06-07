@@ -11,11 +11,14 @@ if [ "$current_directory" == "scripts" ]; then
   exit 1
 fi
 
-#Change the following to the actual GPU devices you want to work on (e.g "0,1") or to NONE if you do not plan on using any GPUs
+# Change the following to the actual GPU devices you want to work on (e.g "0,1") or to NONE if you do not plan on using any GPUs
 DEVICES="NONE"
 
-#Change the following to your caching directory if you want persistent caching, else set it to NONE
+# Change the following to your caching directory if you want persistent caching, else set it to NONE
 CACHE_DIR="NONE"
+
+# Change the following image-tag to the name of your own image, if you do not want to use the default one
+IMAGE_TAG="konstantinjdobler/nlp-research-template"
 
 docker run -it \
     --user $(id -u):$(id -g) \
@@ -25,7 +28,7 @@ docker run -it \
     -v "$(pwd)":/workspace \
     -w /workspace \
     $([ "$CACHE_DIR" != "NONE" ] && echo "--mount type=bind,source=$CACHE_DIR,target=/home/mamba/.cache") \
-    nlp_template \
+    $IMAGE_TAG \
     bash
 
 # if you plan on mounting a cache-folder you will have to create one, before you can run this script
