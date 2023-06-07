@@ -13,8 +13,8 @@
 	},
 	"runArgs": [
 		"--ipc=host",
-		"--gpus",
-		"device=0"
+	//	"--gpus",
+	//	"device=CHANGE_ME"
 	],
 	// Optionally mount cache files like HuggingFace datasets cache. The user directory inside the container is /home/mamba/
 	// "mounts": [
