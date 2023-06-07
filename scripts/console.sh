@@ -27,5 +27,4 @@ docker run -it \
     nlp_template \
     bash
 
-# the mounted cache folder has to exist somewhere, befor this script can be run
-# run the script with bash ./scripts/console.sh
+# the mounted cache folder has to exist somewhere, before this script can be run
