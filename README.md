@@ -118,22 +118,23 @@ Additionally, you can set the `WANDB_API_KEY` in your remote environment; it wil
 After all of this setup you are finally ready for some training. First of all, you need to create your data directory with a `train.txt` and your `dev.txt`. Then you can start a training run in your environment with:
 
 ```bash
-python train.py --name <runName> -d /path/to/data/dir --model roberta-base --gpus=-1 --offline
+python train.py --name <runName> -d /path/to/data/dir --model roberta-base --devices=-1 --offline
 ```
 
 To see an overview over all options and their defaults, run `python train.py --help`.
-We have disabled Weights & Biases syncing with the `--offline` flag. If you want to log your results, enable W&B as described [here](#weights--biases) and omit the `--offline` flag. We also set --gpus=-1 to use all GPU's available.
-To see an overview over all options and their defaults, run `python train.py --help`.
-We have disabled Weights & Biases syncing with the `--offline` flag. If you want to log your results, enable W&B as described [here](#weights--biases) and omit the `--offline` flag. We also set --gpus=-1 to use all GPU's available.
+We have disabled Weights & Biases syncing with the `--offline` flag. If you want to log your results, enable W&B as described [here](#weights--biases) and omit the `--offline` flag. We also set --devices=-1 to use all GPU's available.
 
 ### Using the Docker environment for training
-To run the training code inside the docker environment, use a `docker run` command like this:
-```bash
-docker run -it --gpus='device=0' --ipc=host -v "($pwd)":/workspace -w /workspace <IMAGENAME> bash
-```
-The `--gpus='device=0'` flag (change this to use the GPUs you actually want) selects the GPU with index `0` for the container. Inside the container you can now execute your training script as before.
+To run the training code inside the docker environment, start your container by executing the [console.sh](./scripts/console.sh) script. Inside the container you can now execute your training script as before.
 
-This template provides a shell script which you can use with `bash ./scripts/console.sh`, so you do not have to type this command out every time. Just remember to modify it accordingly, before you start your experiment.
+```bash
+bash ./scripts/console.sh   # use this to start the container
+python train.py --name <runName> -d /path/to/data/dir --model roberta-base --devices=-1 --offline # execute the training inside your container
+```
+
+By default, this will not use any GPUs for training but only one CPU and persistent caching will also not be possible. But you can modify the [console.sh](./scripts/console.sh) script accordingly, to select the GPUs you want to use for training, the directory you want to cache your data in and the docker image the container should be built from. The same applies when you execute the training inside a `Dev Container`. To enable hardware acceleration and caching, make the necessary changes in the [devcontainer.json](.devcontainer/devcontainer.json) as explained [above](#development).
+
+**Note:** In order to mount a directory for caching you need to have one created first.
 
 <details><summary>Using Docker with SLURM / <code>pyxis</code></summary>
 
