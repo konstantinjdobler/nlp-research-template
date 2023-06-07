@@ -401,7 +401,7 @@ def main(parsed_arg_groups: tuple[TrainingArgs, MiscArgs]):
         max_steps=args.training_goal,
         val_check_interval=args.val_frequency,
         check_val_every_n_epoch=None,  # validation based on steps instead of epochs
-        devices=args.devices,
+        devices=num_devices,
         accelerator=args.accelerator,
         strategy=distributed_strategy,
         logger=wandb_logger,
