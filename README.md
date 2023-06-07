@@ -118,7 +118,7 @@ Additionally, you can set the `WANDB_API_KEY` in your remote environment; it wil
 After all of this setup you are finally ready for some training. First of all, you need to create your data directory with a `train.txt` and your `dev.txt`. Then you can start a training run in your environment with:
 
 ```bash
-python train.py --name <runName> -d /path/to/data/dir --model roberta-base --devices=-1 --offline
+python train.py -n <runName> -d /path/to/data/dir --model roberta-base --devices=-1 --offline
 ```
 
 To see an overview over all options and their defaults, run `python train.py --help`.
@@ -129,7 +129,7 @@ To run the training code inside the docker environment, start your container by 
 
 ```bash
 bash ./scripts/console.sh   # use this to start the container
-python train.py --name <runName> -d /path/to/data/dir --model roberta-base --devices=-1 --offline # execute the training inside your container
+python train.py -n <runName> -d /path/to/data/dir --model roberta-base --devices=-1 --offline # execute the training inside your container
 ```
 
 By default, this will not use any GPUs for training but only one CPU and persistent caching will also not be possible. But you can modify the [console.sh](./scripts/console.sh) script accordingly, to select the GPUs you want to use for training, the directory you want to cache your data in and the docker image the container should be built from. The same applies when you execute the training inside a `Dev Container`. To enable hardware acceleration and caching, make the necessary changes in the [devcontainer.json](.devcontainer/devcontainer.json) as explained [above](#development).
