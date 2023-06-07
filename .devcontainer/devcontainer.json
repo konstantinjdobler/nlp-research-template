@@ -11,6 +11,7 @@
 			"OS_SELECTOR": "ubuntu" // force ubuntu base OS for devcontainer
 		}
 	},
+	// Specify which devices you want to use (e.g "device=0")
 	"runArgs": [
 		"--ipc=host",
 	//	"--gpus",
