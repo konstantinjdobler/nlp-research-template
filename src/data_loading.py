@@ -61,8 +61,7 @@ class LMDataModule(L.LightningDataModule):
         if get_rank() == 0:
             logger.debug(f"Loaded tokenizer: {tokenizer}")
 
-        tokenizer_name = self.tokenizer_path.rstrip("/").replace("/", "_").replace("\\", "_")
-        print(tokenizer_name)
+        tokenizer_name = self.tokenizer_path.rstrip("/").replace("/", "_")
         tokenize_fn = make_tokenize_function(tokenizer, self.args.max_sequence_length)
         tokenize_fn_hash = datasets.fingerprint.Hasher.hash(tokenize_fn)
 
@@ -143,7 +142,7 @@ class LMDataModule(L.LightningDataModule):
         train_dev_datasets = datasets.load_dataset(
             extension,
             data_files=data_files,
-            name=str(self.data_dir).replace("/", "_").replace("\\", "_"),
+            name=str(self.data_dir).replace("/", "_"),
             num_proc=self.args.preprocessing_workers,
             cache_dir=tmp_load_dataset_cache_dir,
         )
