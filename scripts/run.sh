@@ -11,4 +11,4 @@ if [ "$current_directory" == "scripts" ]; then
   exit 1
 fi
 
-python train.py --wandb_run_name="runInDevContainer" --devices=-1
+python train.py --wandb_run_name="runInDevContainer" --devices=1
