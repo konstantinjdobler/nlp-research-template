@@ -11,9 +11,14 @@ if [ "$current_directory" == "scripts" ]; then
   exit 1
 fi
 
+#Change the following to the actual GPU devices you want to work on or to NONE if you do not plan on using any GPUs
+DEVICE="NONE" 
+
+
+
 docker run -it \
     --user $(id -u):$(id -g) \
-    --gpus='device=0' \
+    $([[ "$DEVICE" != "NONE" ]] && echo "--gpus=\"device=$DEVICE\"") \
     --ipc host \
     --env WANDB_API_KEY \
     -v "/scratch1/ozimmermann/cache:/home/mamba/.cache" \

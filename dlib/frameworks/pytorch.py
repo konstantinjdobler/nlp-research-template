@@ -12,6 +12,7 @@ def get_num_devices(gpu_specifier):
         num_gpus = torch.cuda.device_count()
         if num_gpus == 0:
             logger.warning("GPUs requested but none found")
+            num_gpus = 1
     elif isinstance(gpu_specifier, list):
         num_gpus = len(gpu_specifier)
     elif isinstance(gpu_specifier, int):
@@ -25,6 +26,7 @@ def get_effective_batch_size_per_step(gpu_specifier, batch_size: int):
         multiplier = torch.cuda.device_count()
         if multiplier == 0:
             print("GPUs requested but none found")
+            multiplier = 1
     elif isinstance(gpu_specifier, list):
         multiplier = len(gpu_specifier)
     elif isinstance(gpu_specifier, int):
