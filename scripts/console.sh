@@ -15,6 +15,7 @@ fi
 DEVICES="NONE"
 
 # Change the following to your caching directory if you want persistent caching (e.g. CACHE_DIR="/scratch1/username/.cache"), else set it to NONE
+# if you plan on mounting a cache-folder you will have to create one, before you can run this script
 CACHE_DIR="NONE"
 
 # Change the following image-tag to the name of your own image, if you do not want to use the default one
@@ -30,7 +31,5 @@ docker run -it \
     $([ "$CACHE_DIR" != "NONE" ] && echo "--mount type=bind,source=$CACHE_DIR,target=/home/mamba/.cache") \
     $IMAGE_TAG \
     bash
-
-# if you plan on mounting a cache-folder you will have to create one, before you can run this script
 
 # run this script from the directory that contains your train.py file (bash ./scripts/soncole.sh)
