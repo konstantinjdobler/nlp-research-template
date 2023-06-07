@@ -1,7 +1,0 @@
-WANDB_API_KEY in ~/.bashrc setzen (dann muss das nicht jedes mal neu gemacht werden)
-
-eigenen Nutzerordner ozimmermann und darin cache ordner in scratch1 anlegen um dort preprocessed data and models zu speichern
-
-bash scripts mit bash ./scrips/scriptname benutzen, Anstatt immer ganzen Befehl einzugeben
-
-!!!Auth mit SSH-Key!!! -> das auch in VS-Code möglich machen indem ssh-config file entsprechend angepasst wird
