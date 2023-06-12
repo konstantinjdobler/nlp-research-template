@@ -19,12 +19,7 @@ from loguru import logger
 from transformers import AutoTokenizer, PreTrainedModel, PreTrainedTokenizer
 
 from dlib.frameworks.lightning import CUDAMetricsCallback
-from dlib.frameworks.pytorch import (
-    get_effective_batch_size_per_step,
-    get_num_devices,
-    get_rank,
-    set_torch_file_sharing_strategy_to_system,
-)
+from dlib.frameworks.pytorch import get_rank, set_torch_file_sharing_strategy_to_system
 from dlib.frameworks.wandb import (
     WANDB_ENTITY,
     WANDB_PROJECT,
@@ -33,7 +28,11 @@ from dlib.frameworks.wandb import (
     check_for_wandb_checkpoint_and_download_if_necessary,
 )
 from src.data_loading import LMDataModule
-from src.helpers import infer_batch_size_per_device
+from src.helpers import (
+    choose_auto_accelerator,
+    choose_auto_devices,
+    handle_batch_size_logic_,
+)
 from src.model import BasicLM
 
 
@@ -81,7 +80,7 @@ class TrainingArgs:
     max_sequence_length: int = dArg(
         default=512,
         help="Sequence length for dataset tokenization.",
-        aliases=["--max_seq_length", "--block_size"],
+        aliases=["--seq_len", "--block_size"],
     )
     overwrite_data_cache: bool = dArg(
         default=False, help="Overwrite the cached preprocessed datasets or not.", aliases="--odc"
@@ -94,23 +93,30 @@ class TrainingArgs:
     )
 
     ####### Hardware ###########
-    accelerator: Literal["gpu", "cpu", "tpu", "mps", "auto"] = dArg(
+    accelerator: Literal["cuda", "cpu", "tpu", "mps", "auto"] = dArg(
         default="auto",
-        help='Hardware accelerator to use. Can be gpu, cpu, tpu, mps, etc. If "auto", will auto-detect available hardware accelerator.',  # noqa: E501
+        help='Hardware accelerator to use. If "auto", will auto-detect available hardware accelerator.',  # noqa: E501
     )
-    distributed_strategy: Literal["ddp", "ddp_smart", "ddp_spawn", "ddp_fork", "dp", "auto"] = dArg(
+    distributed_strategy: Literal[
+        "ddp", "fsdp", "ddp_smart", "ddp_spawn", "ddp_fork", "auto"
+    ] = dArg(
         default="auto",
-        help="Distributed training strategy to use.",
-        aliases=["--dist_strategy", "--ds"],
+        help="Distributed training strategy to use. If `auto`, will select automatically (no distributed strategy is used when using a single device).",
+        aliases="--ds",
     )
-    devices: int | None = dArg(
-        default=None,
-        aliases=["--gpus", "--cpus", "--tpus"],
-        help="Number of devices to use for distributed training. If -1, will use all available devices.",  # noqa: E501
+    num_devices: int = dArg(
+        default=1,
+        aliases=["--devices", "--nd"],
+        help="Number of devices to use for distributed training. If -1, will use all available devices (CUDA) or an accelerator-specific default. For CUDA, select specific GPUs with `CUDA_VISIBLE_DEVICES`.",  # noqa: E501
+    )
+    cuda_device_ids: list[int] = dArg(
+        default=[],
+        aliases="--gpu_ids",
+        help="Specific CUDA devices (selected by specified indices) to use. Overwrites `--num_devices`. Requires CUDA on the host system.",
     )
     workers: int = dArg(
         default=4,
-        help="Number of workers for dataloaders. *Every device* weill use that many workers.",
+        help="Number of workers for dataloaders. *Every device* will use that many workers.",
         aliases="-w",
     )
     preprocessing_workers: int = dArg(
@@ -147,7 +153,7 @@ class TrainingArgs:
     )
     effective_batch_size: int | None = dArg(
         default=None,
-        help="If set, try to auto-infer batch_size_per_device and gradient_accumulation_steps based on number of devices given by --devices.",  # noqa: E501
+        help="If set, try to auto-infer batch_size_per_device and gradient_accumulation_steps based on number of devices given by --num_devices.",  # noqa: E501
         aliases=["--eb"],
     )
     learning_rate: float = dArg(default=5e-5, aliases="--lr")
@@ -180,6 +186,8 @@ class TrainingArgs:
             self.model_log_frequency = int(self.training_goal * self.model_log_frequency)
         if self.lr_warmup < 1:
             self.lr_warmup = int(self.training_goal * self.lr_warmup)
+        if self.cuda_device_ids:
+            self.num_devices = len(self.cuda_device_ids)
 
 
 @dataclass
@@ -206,6 +214,7 @@ class MiscArgs:
 
 @logger.catch(reraise=True)
 def main(parsed_arg_groups: tuple[TrainingArgs, MiscArgs]):
+    current_process_rank = get_rank()
     args, misc_args = parsed_arg_groups
 
     ################ Apply fixes ##############
@@ -213,12 +222,8 @@ def main(parsed_arg_groups: tuple[TrainingArgs, MiscArgs]):
         logger.info("Setting torch sharing strategy to 'file_system'")
         set_torch_file_sharing_strategy_to_system()
 
-    ############# Seed & print args ##############
+    ############# Seed ##############
     misc_args.seed = seed_everything(workers=True, seed=misc_args.seed)
-    current_process_rank = get_rank()
-    if current_process_rank == 0:
-        for arg_group in parsed_arg_groups:
-            logger.info(arg_group)
 
     ############# Construct W&B Logger ##############
     if misc_args.offline or misc_args.fast_dev_run or args.data_preprocessing_only:
@@ -247,45 +252,30 @@ def main(parsed_arg_groups: tuple[TrainingArgs, MiscArgs]):
         **wandb_extra_args,
     )
 
-    #### Calculate effective batch size / gradient accumulation steps ####
-    ACCELERATOR = args.accelerator.upper()
-    num_devices = get_num_devices(args.devices)
-    if args.effective_batch_size:
-        logger.info(
-            f"Trying to auto-infer settings for effective batch size {args.effective_batch_size}..."
-        )
-        (
-            args.batch_size_per_device,
-            args.gradient_accumulation_steps,
-            effective_batch_size_per_step,
-        ) = infer_batch_size_per_device(
-            num_devices, args.effective_batch_size, args.batch_size_per_device
-        )
+    ########### Specifiy auto arguments ###########
+    if args.accelerator == "auto":
+        args.accelerator = choose_auto_accelerator()
+    if args.num_devices == -1:
+        args.num_devices = choose_auto_devices(args.accelerator)
+    if args.cuda_device_ids:
+        cuda_devices = torch.cuda.device_count()
+        if cuda_devices < len(args.cuda_device_ids):
+            raise ValueError(
+                f"Requested {len(args.cuda_device_ids)} GPUs but only {cuda_devices} are available."
+            )
+    effective_batch_size_per_step = handle_batch_size_logic_(args)
 
-        logger.info(
-            f"Using effective batch size {args.effective_batch_size}"
-            f"with {num_devices} {ACCELERATOR}s, "
-            f"{args.batch_size_per_device} batch size per {ACCELERATOR} and "
-            f"{args.gradient_accumulation_steps} gradient accumulation steps."
-        )
-    else:
-        effective_batch_size_per_step = get_effective_batch_size_per_step(
-            args.devices, args.batch_size_per_device
-        )  # does not take accumulation into account
-        args.effective_batch_size = effective_batch_size_per_step * args.gradient_accumulation_steps
-        logger.info(
-            f"Effective batch size {args.effective_batch_size} based on specified args"
-            f"{num_devices} {ACCELERATOR}s, "
-            f"{args.batch_size_per_device} batch size per {ACCELERATOR} and"
-            f"{args.gradient_accumulation_steps} gradient accumulation steps."
-        )
-
+    ########### Log config ###########
     for arg_group in parsed_arg_groups:
         wandb_logger.log_hyperparams(dataclasses.asdict(arg_group))
+        if current_process_rank == 0:
+            logger.info(arg_group)
 
     if current_process_rank == 0 and not args.resume_training and not misc_args.offline:
         if misc_args.wandb_run_name is None:
-            logger.warning("No run name specified with `--wandb_run_name`. Using W&B default (randomly generated name).")
+            logger.warning(
+                "No run name specified with `--wandb_run_name`. Using W&B default (randomly generated name)."
+            )
         else:
             wandb_logger.experiment.name = (
                 misc_args.wandb_run_name + "-" + wandb_logger.version
@@ -300,7 +290,7 @@ def main(parsed_arg_groups: tuple[TrainingArgs, MiscArgs]):
         args.val_frequency * KSAMPLES / args.effective_batch_size
     )
     args.val_frequency = int(
-        args.val_frequency * KSAMPLES / effective_batch_size_per_step
+        args.val_frequency * KSAMPLES / effective_batch_size_per_step  # NOTE: as of June 2023
     )  # val_frequency in lightning is every forward pass NOT optimization step
     args.model_log_frequency = int(args.model_log_frequency * KSAMPLES / args.effective_batch_size)
     args.lr_warmup = int(args.lr_warmup * KSAMPLES / args.effective_batch_size)
@@ -381,13 +371,13 @@ def main(parsed_arg_groups: tuple[TrainingArgs, MiscArgs]):
     dm = LMDataModule(training_args=args, misc_args=misc_args)
     lr_monitor = LearningRateMonitor(logging_interval="step")
     callbacks = [checkpoint_callback, wandb_disk_cleanup_callback, lr_monitor]
-    if args.accelerator == "gpu":
+    if args.accelerator == "cuda":
         callbacks.append(CUDAMetricsCallback())
 
     # "smart" DDP skipping the find_unused_parameters step - slightly faster
     distributed_strategy = (
         DDPStrategy(find_unused_parameters=False)
-        if args.accelerator == "gpu" and args.distributed_strategy == "ddp_smart"
+        if args.accelerator == "cuda" and args.distributed_strategy == "ddp_smart"
         else args.distributed_strategy
     )
 
@@ -401,7 +391,7 @@ def main(parsed_arg_groups: tuple[TrainingArgs, MiscArgs]):
         max_steps=args.training_goal,
         val_check_interval=args.val_frequency,
         check_val_every_n_epoch=None,  # validation based on steps instead of epochs
-        devices=num_devices,    # determine the number of devices that are actually there (use one CPU if no GPUs are available)
+        devices=args.cuda_device_ids or args.num_devices,
         accelerator=args.accelerator,
         strategy=distributed_strategy,
         logger=wandb_logger,
