@@ -134,15 +134,20 @@ class TrainingArgs:
     )
 
     ####### General training ###########
-    training_goal: int = dArg(default=10_000, help="Number K samples to train for.", aliases="--tg")
+    training_goal: int = dArg(
+        default=10_000_000, help="Number training goal units to train for.", aliases="--tg"
+    )
+    training_goal_unit: Literal["samples", "tokens"] = dArg(
+        default="samples", help="Unit of training_goal."
+    )
     val_frequency: float = dArg(
         default=0.05,
-        help="Do validation every K samples. If <1, compute as fraction of training_goal",
+        help="Period in training goal units between two validations. If <1, compute as fraction of training_goal",
         aliases="--vfq",
     )
     model_log_frequency: float = dArg(
         default=0.1,
-        help="Log a model checkpoint every K samples. If <1, compute as fraction of training_goal",
+        help="Period in training goal units between two model checkpoints. If <1, compute as fraction of training_goal",
         aliases="--mfq",
     )
     val_before_training: bool = dArg(default=True, help="Run one validation epoch before training.")
@@ -159,7 +164,7 @@ class TrainingArgs:
     learning_rate: float = dArg(default=5e-5, aliases="--lr")
     lr_warmup: float = dArg(
         default=0.1,
-        help="Number of K samples to do a learning rate warmup. If <1, compute as fraction of training_goal.",  # noqa: E501
+        help="Number of training goal units to do a learning rate warmup. If <1, compute as fraction of training_goal.",  # noqa: E501
     )
     lr_schedule: Literal[
         "cosine", "linear", "reduce_on_plateau", "constant", "cosine_with_restarts", "polynomial"
@@ -286,18 +291,22 @@ def main(parsed_arg_groups: tuple[TrainingArgs, MiscArgs]):
             )  # Append id to name for easier recognition in W&B UI
 
     ########### Calulate training constants ###########
-    KSAMPLES = 1000
-    args.training_goal = int(
-        args.training_goal * KSAMPLES / args.effective_batch_size
-    )  # Lightning does `gradient_accumulation_steps` many forward passes per step (step := optimization step aka backward pass)
-    val_frequency_in_optimization_steps = int(
-        args.val_frequency * KSAMPLES / args.effective_batch_size
-    )
-    args.val_frequency = int(
-        args.val_frequency * KSAMPLES / effective_batch_size_per_step  # NOTE: as of June 2023
-    )  # val_frequency in lightning is every forward pass NOT optimization step
-    args.model_log_frequency = int(args.model_log_frequency * KSAMPLES / args.effective_batch_size)
-    args.lr_warmup = int(args.lr_warmup * KSAMPLES / args.effective_batch_size)
+
+    if args.training_goal_unit == "samples":
+        goal_units_per_optimizer_step = args.effective_batch_size
+        goal_units_per_forward_pass = effective_batch_size_per_step
+    else:
+        goal_units_per_optimizer_step = args.effective_batch_size * args.max_sequence_length
+        goal_units_per_forward_pass = effective_batch_size_per_step * args.max_sequence_length
+
+    # Lightning does `gradient_accumulation_steps` many forward passes per trainer step (step := optimization step)
+    args.training_goal = int(args.training_goal / goal_units_per_optimizer_step)
+    val_frequency_in_optimization_steps = int(args.val_frequency / goal_units_per_optimizer_step)
+
+    # val_frequency in lightning is every forward pass NOT optimization step # NOTE: as of June 2023
+    args.val_frequency = int(args.val_frequency / goal_units_per_forward_pass)
+    args.model_log_frequency = int(args.model_log_frequency / goal_units_per_optimizer_step)
+    args.lr_warmup = int(args.lr_warmup / goal_units_per_optimizer_step)
 
     tokenizer: PreTrainedTokenizer = AutoTokenizer.from_pretrained(
         args.tokenizer_path or args.model_name_or_path, use_fast=True
@@ -305,7 +314,7 @@ def main(parsed_arg_groups: tuple[TrainingArgs, MiscArgs]):
 
     vocab_size = len(tokenizer)  # NOTE: tokenizer.vocab_size returns size without added vocab
     checkpoint_callback = ModelCheckpoint(
-        filename="snap-{step}-ksamples-{progress/ksamples:.2f}-loss-{val/loss:.2f}",
+        filename="snap-{step}-samples-{progress/samples}-{progress/tokens}-loss-{val/loss:.2f}",
         monitor="val/loss",
         mode="min",
         auto_insert_metric_name=False,
@@ -331,12 +340,12 @@ def main(parsed_arg_groups: tuple[TrainingArgs, MiscArgs]):
                 args.checkpoint_path,
                 effective_batch_size_per_step=effective_batch_size_per_step,
             )
-            print(model.ksamples_processed)
+            print(model.samples_processed)
         else:  # load only weights
             model = BasicLM(training_args=args, **model_extra_args)
             torch_load = torch.load(args.checkpoint_path, map_location=torch.device("cpu"))
             model.load_state_dict(torch_load["state_dict"], strict=False)
-            model.ksamples_processed = torch.tensor(0.0)
+            model.samples_processed = torch.tensor(0.0)
     else:
         model = BasicLM(training_args=args, **model_extra_args)
 
@@ -353,7 +362,7 @@ def main(parsed_arg_groups: tuple[TrainingArgs, MiscArgs]):
 
     if current_process_rank == 0:
         model.on_train_start = lambda: logger.info(
-            f"Total training steps: {args.training_goal} | "
+            f"Total optimizer steps: {args.training_goal} | "
             f"LR warmup steps: {args.lr_warmup} | "
             f"Validation Frequency: {val_frequency_in_optimization_steps} | "
             f"Model Log Frequencey: {args.model_log_frequency} | "
