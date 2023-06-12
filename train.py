@@ -258,9 +258,10 @@ def main(parsed_arg_groups: tuple[TrainingArgs, MiscArgs]):
     if args.num_devices == -1:
         args.num_devices = choose_auto_devices(args.accelerator)
     if args.cuda_device_ids:
-        if torch.cuda.device_count() < len(args.cuda_device_ids):
+        cuda_devices = torch.cuda.device_count()
+        if cuda_devices < len(args.cuda_device_ids):
             raise ValueError(
-                f"Requested {len(args.cuda_device_ids)} GPUs but only {torch.cuda.device_count()} are available."
+                f"Requested {len(args.cuda_device_ids)} GPUs but only {cuda_devices} are available."
             )
     effective_batch_size_per_step = handle_batch_size_logic_(args)
 
