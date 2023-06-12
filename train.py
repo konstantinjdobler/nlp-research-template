@@ -80,7 +80,7 @@ class TrainingArgs:
     max_sequence_length: int = dArg(
         default=512,
         help="Sequence length for dataset tokenization.",
-        aliases=["--max_seq_length", "--block_size"],
+        aliases=["--seq_len", "--block_size"],
     )
     overwrite_data_cache: bool = dArg(
         default=False, help="Overwrite the cached preprocessed datasets or not.", aliases="--odc"
@@ -98,10 +98,10 @@ class TrainingArgs:
         help='Hardware accelerator to use. If "auto", will auto-detect available hardware accelerator.',  # noqa: E501
     )
     distributed_strategy: Literal[
-        "ddp", "ddp_smart", "ddp_spawn", "ddp_fork", "fsdp", "auto"
+        "ddp", "fsdp", "ddp_smart", "ddp_spawn", "ddp_fork", "auto"
     ] = dArg(
         default="auto",
-        help="Distributed training strategy to use.",
+        help="Distributed training strategy to use. If `auto`, will select automatically (no distributed strategy is used when using a single device).",
         aliases="--ds",
     )
     num_devices: int = dArg(
