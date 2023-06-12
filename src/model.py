@@ -40,7 +40,7 @@ class BasicLM(L.LightningModule):
         super().__init__()
         if not training_args.resume_training:
             self.save_hyperparameters(
-                ignore=["effective_batch_size_per_step", "samples_processed"]
+                ignore=["effective_batch_size_per_step", "samples_processed", "tokens_processed"]
             )
         self.args = training_args
         self.adhoc_args = adhoc_args
@@ -66,7 +66,7 @@ class BasicLM(L.LightningModule):
 
         self.effective_batch_size_per_step = effective_batch_size_per_step
         self.register_buffer("samples_processed", torch.tensor(samples_processed))
-        self.register_buffer("tokens_processed", torch.tensor(samples_processed))
+        self.register_buffer("tokens_processed", torch.tensor(tokens_processed))
 
     def forward(self, x):
         return self.model(x).logits
@@ -77,7 +77,7 @@ class BasicLM(L.LightningModule):
         return loss
 
     def on_train_batch_end(self, outputs, batch, batch_idx, unused=0) -> None:
-        self.samples_processed += self.effective_batch_size_per_step / 1000
+        self.samples_processed += self.effective_batch_size_per_step
         self.tokens_processed += self.effective_batch_size_per_step * self.args.max_sequence_length
         self.log_dict(
             {

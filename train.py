@@ -346,6 +346,7 @@ def main(parsed_arg_groups: tuple[TrainingArgs, MiscArgs]):
             torch_load = torch.load(args.checkpoint_path, map_location=torch.device("cpu"))
             model.load_state_dict(torch_load["state_dict"], strict=False)
             model.samples_processed = torch.tensor(0.0)
+            model.tokens_processed = torch.tensor(0.0)
     else:
         model = BasicLM(training_args=args, **model_extra_args)
 
