@@ -5,7 +5,6 @@ from pathlib import Path
 from typing import Literal
 
 import torch
-import wandb
 from dargparser import dArg, dargparse
 from lightning import Trainer, seed_everything
 from lightning.pytorch.callbacks import LearningRateMonitor, ModelCheckpoint
@@ -18,6 +17,7 @@ from lightning.pytorch.strategies import DDPStrategy
 from loguru import logger
 from transformers import AutoTokenizer, PreTrainedModel, PreTrainedTokenizer
 
+import wandb
 from dlib.frameworks.lightning import CUDAMetricsCallback
 from dlib.frameworks.pytorch import get_rank, set_torch_file_sharing_strategy_to_system
 from dlib.frameworks.wandb import (
@@ -49,7 +49,7 @@ class TrainingArgs:
     )
     resume_training: bool = dArg(
         default=False,
-        help="Whether to resume training form checkpoint or only load the weights.",
+        help="Whether to resume training from checkpoint or only load the weights. If true, `--checkpoint_path` must be specified.",
         aliases="--resume",
     )
     checkpoint_path: str | None = dArg(
@@ -95,7 +95,7 @@ class TrainingArgs:
     ####### Hardware ###########
     accelerator: Literal["cuda", "cpu", "tpu", "mps", "auto"] = dArg(
         default="auto",
-        help='Hardware accelerator to use. If "auto", will auto-detect available hardware accelerator.',  # noqa: E501
+        help='Hardware accelerator to use. If "auto", will auto-detect available hardware accelerator.',
     )
     distributed_strategy: Literal[
         "ddp", "fsdp", "ddp_smart", "ddp_spawn", "ddp_fork", "auto"
@@ -105,9 +105,9 @@ class TrainingArgs:
         aliases="--ds",
     )
     num_devices: int = dArg(
-        default=1,
+        default=-1,
         aliases=["--devices", "--nd"],
-        help="Number of devices to use for distributed training. If -1, will use all available devices (CUDA) or an accelerator-specific default. For CUDA, select specific GPUs with `CUDA_VISIBLE_DEVICES`.",  # noqa: E501
+        help="Number of devices to use for distributed training. If -1, will use all available devices (CUDA) or an accelerator-specific default.",
     )
     cuda_device_ids: list[int] = dArg(
         default=[],
@@ -121,7 +121,7 @@ class TrainingArgs:
     )
     preprocessing_workers: int = dArg(
         default=4,
-        help="Number of workers for preprocessing the datasets. Cached datasets are only valid for the same number of preprocessing workers.",  # noqa: E501
+        help="Number of workers for preprocessing the datasets.",
         aliases="--pw",
     )
     precision: Literal["16-mixed", "bf16-mixed", 32] = dArg(
@@ -130,7 +130,7 @@ class TrainingArgs:
     )
     compile: bool = dArg(
         default=False,
-        help="Whether to compile the model with using `torch.compile`. Requires torch>=2.0",
+        help="Whether to compile the model with `torch.compile`. Requires torch>=2.0",
     )
 
     ####### General training ###########
@@ -148,8 +148,8 @@ class TrainingArgs:
     val_before_training: bool = dArg(default=True, help="Run one validation epoch before training.")
     batch_size_per_device: int = dArg(
         default=8,
-        help="Batch size per device. If --effective_batch_size is specified, this is the maximum batch size per device (you should test when you cannot get larger without CUDA OOM errors.).",  # noqa: E501
-        aliases=["--batch_size_per_gpu", "-b"],
+        help="Batch size per device. If effective_batch_size is specified, this is the maximum batch size per device (you should then increase this in powers of two until you get CUDA OOM errors).",  # noqa: E501
+        aliases="-b",
     )
     effective_batch_size: int | None = dArg(
         default=None,
@@ -187,6 +187,10 @@ class TrainingArgs:
         if self.lr_warmup < 1:
             self.lr_warmup = int(self.training_goal * self.lr_warmup)
         if self.cuda_device_ids:
+            if self.num_devices != -1:
+                logger.warning(
+                    f"Overwriting --num_devices={self.num_devices} with {len(self.cuda_device_ids)} because of --cuda_device_ids={self.cuda_device_ids}"
+                )
             self.num_devices = len(self.cuda_device_ids)
 
 
@@ -258,10 +262,10 @@ def main(parsed_arg_groups: tuple[TrainingArgs, MiscArgs]):
     if args.num_devices == -1:
         args.num_devices = choose_auto_devices(args.accelerator)
     if args.cuda_device_ids:
-        cuda_devices = torch.cuda.device_count()
-        if cuda_devices < len(args.cuda_device_ids):
+        cuda_device_count = torch.cuda.device_count()
+        if cuda_device_count < len(args.cuda_device_ids):
             raise ValueError(
-                f"Requested {len(args.cuda_device_ids)} GPUs but only {cuda_devices} are available."
+                f"Requested {len(args.cuda_device_ids)} CUDA GPUs but only {cuda_device_count} are available."
             )
     effective_batch_size_per_step = handle_batch_size_logic_(args)
 

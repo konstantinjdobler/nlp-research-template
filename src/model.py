@@ -38,7 +38,9 @@ class BasicLM(L.LightningModule):
     ) -> None:
         super().__init__()
         if not training_args.resume_training:
-            self.save_hyperparameters(ignore=["effective_batch_size_per_step", "ksamples_processed"])
+            self.save_hyperparameters(
+                ignore=["effective_batch_size_per_step", "ksamples_processed"]
+            )
         self.args = training_args
         self.adhoc_args = adhoc_args
         config = AutoConfig.from_pretrained(self.args.model_name_or_path, return_dict=True)

@@ -47,6 +47,8 @@ def choose_auto_devices(accelerator: str):
                     "CUDA_VISIBLE_DEVICES not set and `devices=-1`, using all available GPUs."
                 )
             return torch.cuda.device_count()
+        case "mps":
+            return 1  # There's only a single GPU supported on Apple Silicon for now
         case "tpu":
             return 8  # default from lightning
         case "cpu":
