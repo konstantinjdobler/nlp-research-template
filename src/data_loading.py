@@ -79,7 +79,7 @@ class LMDataModule(L.LightningDataModule):
         logger.info(f"Rank {get_rank()} | Cache path: {cache_path}")
 
         with main_process_first(
-            description="Loading dataset", active=get_num_devices(self.args.devices) > 1
+            description="Loading dataset", active=get_num_devices(self.args.num_devices) > 1
         ):
             if os.path.exists(cache_path):
                 logger.success(f"Rank {get_rank()} | Found cached processed dataset: {cache_path}")

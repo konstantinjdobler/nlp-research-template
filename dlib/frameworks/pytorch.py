@@ -6,34 +6,6 @@ import torch
 from loguru import logger
 
 
-def get_num_devices(gpu_specifier):
-    num_gpus = 1
-    if gpu_specifier == -1:
-        num_gpus = torch.cuda.device_count()
-        if num_gpus == 0:
-            logger.warning("GPUs requested but none found")
-            num_gpus = 1    # use one CPU if no other accelerators are found
-    elif isinstance(gpu_specifier, list):
-        num_gpus = len(gpu_specifier)
-    elif isinstance(gpu_specifier, int):
-        num_gpus = gpu_specifier
-    return int(num_gpus)
-
-
-def get_effective_batch_size_per_step(gpu_specifier, batch_size: int):
-    multiplier = 1
-    if gpu_specifier == -1:
-        multiplier = torch.cuda.device_count()
-        if multiplier == 0:
-            print("GPUs requested but none found")
-            multiplier = 1
-    elif isinstance(gpu_specifier, list):
-        multiplier = len(gpu_specifier)
-    elif isinstance(gpu_specifier, int):
-        multiplier = gpu_specifier
-    return int(multiplier * batch_size)
-
-
 def set_torch_file_sharing_strategy_to_system(worker_id: int = 0) -> None:
     """
     When having many workers for dataloaders / many tensors per batch, torch uses file descriptors to share data between processes.
