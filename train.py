@@ -137,7 +137,7 @@ class TrainingArgs:
     training_goal: int = dArg(
         default=10_000_000, help="Number training goal units to train for.", aliases="--tg"
     )
-    training_goal_unit: Literal["samples", "tokens"] = dArg(
+    training_goal_unit: Literal["samples", "tokens", "optimizer-steps"] = dArg(
         default="samples", help="Unit of training_goal."
     )
     val_frequency: float = dArg(
@@ -295,9 +295,14 @@ def main(parsed_arg_groups: tuple[TrainingArgs, MiscArgs]):
     if args.training_goal_unit == "samples":
         goal_units_per_optimizer_step = args.effective_batch_size
         goal_units_per_forward_pass = effective_batch_size_per_step
-    else:
+    elif args.training_goal_unit == "tokens":
         goal_units_per_optimizer_step = args.effective_batch_size * args.max_sequence_length
         goal_units_per_forward_pass = effective_batch_size_per_step * args.max_sequence_length
+    elif args.training_goal_unit == "optimizer-steps":
+        goal_units_per_optimizer_step = 1
+        goal_units_per_forward_pass = 1 / args.gradient_accumulation_steps
+    else:
+        raise ValueError(f"Unknown training goal unit: {args.training_goal_unit}")
 
     # Lightning does `gradient_accumulation_steps` many forward passes per trainer step (step := optimization step)
     args.training_goal = int(args.training_goal / goal_units_per_optimizer_step)
