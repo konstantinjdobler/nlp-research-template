@@ -1,4 +1,5 @@
 import dataclasses
+import multiprocessing
 import os
 from dataclasses import dataclass
 from pathlib import Path
@@ -120,8 +121,8 @@ class TrainingArgs:
         aliases="-w",
     )
     preprocessing_workers: int = dArg(
-        default=4,
-        help="Number of workers for preprocessing the datasets.",
+        default=-1,
+        help="Number of workers for preprocessing the datasets. If -1, use all available CPUs.",
         aliases="--pw",
     )
     precision: Literal["16-mixed", "bf16-mixed", 32] = dArg(
@@ -151,6 +152,7 @@ class TrainingArgs:
         aliases="--mfq",
     )
     val_before_training: bool = dArg(default=True, help="Run one validation epoch before training.")
+    val_only: bool = dArg(default=False, help="Run one validation epoch before training.")
     batch_size_per_device: int = dArg(
         default=8,
         help="Batch size per device. If effective_batch_size is specified, this is the maximum batch size per device (you should then increase this in powers of two until you get CUDA OOM errors).",  # noqa: E501
@@ -197,6 +199,11 @@ class TrainingArgs:
                     f"Overwriting --num_devices={self.num_devices} with {len(self.cuda_device_ids)} because of --cuda_device_ids={self.cuda_device_ids}"
                 )
             self.num_devices = len(self.cuda_device_ids)
+        if self.preprocessing_workers == -1:
+            # Set to all available CPUs, handle SLURM case when only some CPUs are available to the job
+            self.preprocessing_workers = int(
+                os.environ.get("SLURM_JOB_CPUS_PER_NODE", multiprocessing.cpu_count())
+            )
 
 
 @dataclass
@@ -289,6 +296,20 @@ def main(parsed_arg_groups: tuple[TrainingArgs, MiscArgs]):
             wandb_logger.experiment.name = (
                 misc_args.wandb_run_name + "-" + wandb_logger.version
             )  # Append id to name for easier recognition in W&B UI
+
+    IS_ON_SLURM = SLURMEnvironment.detect()
+    if IS_ON_SLURM and current_process_rank == 0:
+        gpu_identifiers = (
+            os.environ.get("SLURM_GPUS")
+            or os.environ.get("SLURM_GPUS_PER_TASK")
+            or len(os.environ.get("CUDA_VISIBLE_DEVICES", []))
+        )
+        logger.info(
+            f"Detected SLURM environment. SLURM Job ID: {os.environ.get('SLURM_JOB_ID')}, "
+            f"SLURM Host Name: {os.environ.get('SLURM_JOB_NODELIST')},"
+            f"SLURM Job Name: {os.environ.get('SLURM_JOB_NAME')}, "
+            f"SLURM GPUS: {gpu_identifiers}"
+        )
 
     ########### Calulate training constants ###########
 
@@ -401,7 +422,7 @@ def main(parsed_arg_groups: tuple[TrainingArgs, MiscArgs]):
     )
 
     plugins = None
-    if SLURMEnvironment.detect():
+    if IS_ON_SLURM:
         logger.info("Disabling SLURMEnvironment (we use lightning's native DDP launcher)")
         plugins = [LightningEnvironment()]
 
@@ -425,22 +446,25 @@ def main(parsed_arg_groups: tuple[TrainingArgs, MiscArgs]):
         inference_mode=not args.compile,  # inference_mode for val/test and PyTorch 2.0 compiler don't like each other  # noqa: E501
     )
 
-    if args.val_before_training:
+    if args.val_before_training and not args.resume_training:
         # TODO: we could use a new trainer with Trainer(devices=1, num_nodes=1) to prevent samples from possibly getting replicated with DistributedSampler here.  # noqa: E501
         logger.info(f"Rank {current_process_rank} | Validation before training...")
         val_result = trainer.validate(model, dm)
         print(val_result)
+        if args.val_only:
+            exit(0)
 
     logger.info(f"Rank {current_process_rank} | Starting training...")
-    try:
-        trainer.fit(model, dm, ckpt_path=args.checkpoint_path if args.resume_training else None)
-
+    trainer.fit(model, dm, ckpt_path=args.checkpoint_path if args.resume_training else None)
+    if trainer.interrupted and IS_ON_SLURM:
+        logger.error(
+            "Detected keyboard interrupt, not trying to save latest checkpoint right now because we detected SLURM and do not want to drain the node..."
+        )
+    else:
         logger.success("Fit complete, starting validation...")
         # Validate after training has finished
         trainer.validate(model, dm)
-    except Exception as e:
-        logger.exception(e)
-    finally:
+
         if current_process_rank == 0:
             logger.info("Trying to save checkpoint....")
 
