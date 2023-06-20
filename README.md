@@ -44,7 +44,7 @@ Lockfiles are an easy way to **exactly** reproduce an environment.
 After having installed `mamba` and `conda-lock`, you can create a `mamba` environment named `gpt5` from a lockfile with all necessary dependencies installed like this:
 
 ```bash
-mamba lock install --name gpt5 conda-lock.yml
+conda-lock install --name gpt5 conda-lock.yml
 ```
 
 You can then activate your environment with
@@ -53,7 +53,7 @@ You can then activate your environment with
 mamba activate gpt5
 ```
 
-To generate new lockfiles after updating the `environment.yml` file, simply run `mamba lock` in the directory with your `environment.yml` file.
+To generate new lockfiles after updating the `environment.yml` file, simply run `conda-lock` in the directory with your `environment.yml` file.
 
 For more advanced usage of environments (e.g. updating or removing environments) have a look at the [conda-documentation](https://conda.io/projects/conda/en/latest/user-guide/tasks/manage-environments.html#removing-an-environment).
 
@@ -67,13 +67,13 @@ Whenever you create an environment for a different processor architecture, some 
 Setting up the environment <code>ppc64le</code> is a bit tricky because the official channels do not provide packages compiled for <code>ppc64le</code>. However, we can use the amazing [Open-CE channel](https://ftp.osuosl.org/pub/open-ce/current/) instead. A lockfile containing the relevant dependencies is already prepared in <code>ppc64le.conda-lock.yml</code> and the environment again can be simply installed with:
 
 ```bash
-mamba lock install --name gpt5-ppc64le ppc64le.conda-lock.yml
+conda-lock install --name gpt5-ppc64le ppc64le.conda-lock.yml
 ```
 
 Dependencies for <code>ppce64le</code> should go into the seperate <code>ppc64le.environment.yml</code> file. Use the following command to generate a new lockfile after updating the dependencies:
 
 ```bash
-mamba lock --file ppc64le.environment.yml --lockfile ppc64le.conda-lock.yml
+conda-lock --file ppc64le.environment.yml --lockfile ppc64le.conda-lock.yml
 ```
 
 </p>
@@ -165,7 +165,7 @@ docker run -it --user $(id -u):$(id -g) --ipc host -v "$(pwd)":/workspace -w /wo
 For security reasons, `docker` might be disabled on your HPC cluster. You might be able to use the SLURM plugin `pyxis` instead like this:
 
 ```bash
-srun ... --container-image konstantinjdobler/nlp-research-template:latest python train.py --num_devices=-1 ...
+srun ... --container-image konstantinjdobler/nlp-research-template:latest python train.py ...
 ```
 
 This uses [`enroot`](https://github.com/NVIDIA/enroot) under the hood to import your docker image and run your code inside the container. See the [`pyxis` documentation](https://github.com/NVIDIA/pyxis) for more options, such as `--container-mounts` or `--container-writable`.
