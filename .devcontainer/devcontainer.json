@@ -48,7 +48,6 @@
 			]
 		}
 	},
-	// Currently not functioning so we have to install development tools already in the dockerfile for now
 	"postCreateCommand": "pipx install conda-lock"
 	// Use 'forwardPorts' to make a list of ports inside the container available locally.
 	// "forwardPorts": []
