@@ -27,7 +27,7 @@ bash Mambaforge-$(uname)-$(uname -m).sh
 
 <p>
 
-The preferred method is to install conda-lock into your `mamba` / `conda` `base` environment using `mamba install -c conda-forge -n base conda-lock`. Then, you can access conda-lock via the automatic subcommand discovery (e.g. `mamba lock --version`). Otherwise, visit the [conda-lock repo](https://github.com/conda/conda-lock). Conda-lock is installed in the devcontainer during start. For basic usage, have a look at the commands below:
+The preferred method is to install `conda-lock` using `pipx install conda-lock`. For other options, visit the [conda-lock repo](https://github.com/conda/conda-lock). For basic usage, have a look at the commands below:
 
 ```bash
 conda-lock install --name gpt5 conda-lock.yml # create environment with name gpt5 based on lockfile
