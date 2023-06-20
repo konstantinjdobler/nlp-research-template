@@ -104,7 +104,7 @@ After having installed the [Remote-SSH-](https://code.visualstudio.com/docs/remo
 3. VS Code will automatically detect the `.devcontainer` directory and ask you to reopen the folder in a Dev Container.
 4. Press <code>Reopen in Container</code> and wait for VS Code to set everything up.
 
-When using this workflow you will have to adapt `"runArgs": ["--ipc=host", "--gpus", "device=CHANGE_ME"]` in [`.devcontainer/devcontainer.json`](.devcontainer/devcontainer.json) and specify the GPU-devices you are actually going to use on the host machine for your development. Optionally you can mount cache files with `"mounts": ["source=/MY_HOME_DIR/.cache,target=/home/mamba/.cache,type=bind"]`.
+When using this workflow you will have to adapt `"runArgs": ["--ipc=host", "--gpus", "device=CHANGE_ME"]` in [`.devcontainer/devcontainer.json`](.devcontainer/devcontainer.json) and specify the GPU-devices you are actually going to use on the host machine for your development. Optionally you can mount cache files with `"mounts": ["source=/MY_HOME_DIR/.cache,target=/home/mamba/.cache,type=bind"]`. `conda-lock` is automatically installed for you in the Dev Container.
 
 Additionally, you can set the `WANDB_API_KEY` in your remote environment; it will then be automatically mapped into the container.
 
