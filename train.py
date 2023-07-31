@@ -33,6 +33,7 @@ from src.helpers import (
     choose_auto_accelerator,
     choose_auto_devices,
     handle_batch_size_logic_,
+    log_slurm_info,
 )
 from src.model import BasicLM
 
@@ -299,21 +300,7 @@ def main(parsed_arg_groups: tuple[TrainingArgs, MiscArgs]):
 
     IS_ON_SLURM = SLURMEnvironment.detect()
     if IS_ON_SLURM and current_process_rank == 0:
-        # The info doesn't always seem to be in the same environment variable, so we just check all of them
-        gpu_identifiers = (
-            os.environ.get("SLURM_GPUS")
-            or os.environ.get("SLURM_GPUS_PER_TASK")
-            or os.environ.get("SLURM_JOB_GPUS")
-            or os.environ.get("SLURM_STEP_GPUS")
-            or len(os.environ.get("CUDA_VISIBLE_DEVICES", []))
-        )
-        logger.info(
-            f"Detected SLURM environment. SLURM Job ID: {os.environ.get('SLURM_JOB_ID')}, "
-            f"SLURM Host Name: {os.environ.get('SLURM_JOB_NODELIST')}, "
-            f"SLURM Job Name: {os.environ.get('SLURM_JOB_NAME')}, "
-            f"SLURM GPUS: {gpu_identifiers}"
-        )
-
+        log_slurm_info()
     ########### Calulate training constants ###########
 
     if args.training_goal_unit == "samples":
@@ -441,7 +428,6 @@ def main(parsed_arg_groups: tuple[TrainingArgs, MiscArgs]):
         deterministic=misc_args.force_deterministic,
         callbacks=callbacks,
         plugins=plugins,
-        enable_checkpointing=True,
         precision=args.precision,
         gradient_clip_val=args.gradient_clipping,
         accumulate_grad_batches=args.gradient_accumulation_steps,
