@@ -4,9 +4,10 @@ channels:
   - https://ftp.osuosl.org/pub/open-ce/current/ # needed for binaries compiled for ppc64le
   - defaults # needed for some small packages (leveldb, ...)
 dependencies:
-  - pytorch=1.13 # OpenCE version 1.8
+  # - python=3.9 # or don't specify the version and use latest stable
+  - pytorch=2.0.1 # OpenCE version 1.9
   # CUDA only for Linux (on compute server machine)
-  - cudatoolkit=11.4 # OpenCE version 1.8
+  - cudatoolkit=11.8 # OpenCE version 1.9
   - dargparser
   - wandb
   - lightning
