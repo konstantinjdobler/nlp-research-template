@@ -1,0 +1,12 @@
+; DO NOT EDIT (unless you know what you are doing)
+;
+; This subdirectory is a git "subrepo", and this file is maintained by the
+; git-subrepo command. See https://github.com/ingydotnet/git-subrepo#readme
+;
+[subrepo]
+	remote = https://github.com/konstantinjdobler/dlib.git
+	branch = main
+	commit = 3cab76c59746771d890d84d6d9b025b106b2fda6
+	parent = 36a76a435436c20e1bd95117425800c0a3339e35
+	method = merge
+	cmdver = 0.4.6
