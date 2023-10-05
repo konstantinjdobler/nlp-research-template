@@ -1,5 +1,5 @@
 data/**/*
-
+logs/
 # experiment output logs
 wandb/
 artifacts/
@@ -139,5 +139,5 @@ dmypy.json
 # data for testing
 /data
 
-# everything that has to do with run-results 
+# everything that has to do with run-results
 /template
