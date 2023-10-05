@@ -9,7 +9,6 @@ from typing import Any, Callable, Deque, Dict, Optional
 
 import torch
 from lightning import Fabric
-from lightning.fabric.accelerators.xla import _XLA_GREATER_EQUAL_2_1
 from lightning.fabric.utilities.rank_zero import rank_zero_only as fabric_rank_zero_only
 from torch import nn
 from torch.utils.flop_counter import FlopCounterMode
@@ -152,6 +151,8 @@ def get_flops_available(device: torch.device, precision: str) -> Optional[float]
                     "MFU cannot be calculated and reported."
                 )
     elif device.type == "xla":
+        from lightning.fabric.accelerators.xla import _XLA_GREATER_EQUAL_2_1
+
         if _XLA_GREATER_EQUAL_2_1:
             from torch_xla._internal import tpu
         else:
