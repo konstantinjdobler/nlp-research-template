@@ -6,10 +6,7 @@ import torch
 from lightning import Trainer, seed_everything
 from lightning.pytorch.callbacks import LearningRateMonitor, ModelCheckpoint
 from lightning.pytorch.loggers.wandb import WandbLogger
-from lightning.pytorch.plugins.environments import (
-    LightningEnvironment,
-    SLURMEnvironment,
-)
+from lightning.pytorch.plugins.environments import LightningEnvironment, SLURMEnvironment
 from print_on_steroids import graceful_exceptions, logger
 from simple_parsing import parse
 from transformers import AutoTokenizer, PreTrainedTokenizerFast
@@ -33,6 +30,7 @@ WANDB_ENTITY = "<enter here>"
 
 
 def main(args: TrainingArgs):
+
     ########### CUDA checks ###########
     if args.accelerator == "cuda":
         num_available_gpus = torch.cuda.device_count()
@@ -53,12 +51,10 @@ def main(args: TrainingArgs):
     ############# Construct W&B Logger ##############
     if args.offline or args.fast_dev_run or args.data_preprocessing_only:
         os.environ["WANDB_MODE"] = "dryrun"
-
     wandb_extra_args = dict(name=args.run_name)
     if args.saved_checkpoint_path and args.resume and check_checkpoint_path_for_wandb(args.saved_checkpoint_path):
         logger.info("Resuming training from W&B")
         wandb_extra_args = dict(id=check_checkpoint_path_for_wandb(args.saved_checkpoint_path), resume="must")  # resume W&B run
-
     wandb_logger = WandbLogger(
         project=WANDB_PROJECT,
         entity=WANDB_ENTITY,
@@ -66,14 +62,10 @@ def main(args: TrainingArgs):
         tags=args.wandb_tags,
         **wandb_extra_args,
     )
-
-    ########### Log config ###########
-
     wandb_logger.log_hyperparams(dataclasses.asdict(args))
     wandb_logger.experiment.log_code(".")  # log code to wandb to be able to reproduce the run
     if current_process_rank == 0:
         logger.info(args)
-
     if current_process_rank == 0 and not args.resume and not args.offline:
         if args.run_name is None:
             logger.warning("No run name specified with `--run_name`. Using W&B default (randomly generated name).")
@@ -82,23 +74,9 @@ def main(args: TrainingArgs):
             wandb_logger.experiment.name = (
                 args.run_name + "-" + wandb_logger.version
             )  # Append id to name for easier recognition in W&B UI
-
     IS_ON_SLURM = SLURMEnvironment.detect()
     if IS_ON_SLURM and current_process_rank == 0:
         log_slurm_info()
-
-    ########### Calulate training constants ###########
-
-    tokenizer: PreTrainedTokenizerFast = AutoTokenizer.from_pretrained(args.tokenizer_path or args.hf_model_name, use_fast=True)
-
-    checkpoint_callback = ModelCheckpoint(
-        filename="snap-{step}-samples-{progress/samples}-{progress/tokens}-loss-{val/loss:.2f}",
-        monitor="val/loss",
-        mode="min",
-        auto_insert_metric_name=False,
-        every_n_train_steps=int(args.save_interval),
-    )
-    wandb_disk_cleanup_callback = WandbCleanupDiskAndCloudSpaceCallback(cleanup_local=True, cleanup_online=False, size_limit=20)
 
     ################# Construct model ##############
 
@@ -130,13 +108,14 @@ def main(args: TrainingArgs):
     else:
         model = BasicLM(**model_args)
 
+    tokenizer: PreTrainedTokenizerFast = AutoTokenizer.from_pretrained(args.tokenizer_path or args.hf_model_name, use_fast=True)
     if not args.resume:
         pretrained_vocab_size = model.model.get_input_embeddings().weight.shape[0]
         if len(tokenizer) != pretrained_vocab_size:
             logger.warning(f"Resizing embedding size from {pretrained_vocab_size} to match tokenizer ({len(tokenizer)}).")
             model.model.resize_token_embeddings(len(tokenizer))
 
-        wandb_logger.watch(model, log="all", log_freq=500, log_graph=False)
+    wandb_logger.watch(model, log="all", log_freq=500, log_graph=False)
 
     # https://pytorch.org/docs/stable/generated/torch.set_float32_matmul_precision.html#torch.set_float32_matmul_precision
     torch.set_float32_matmul_precision("high")
@@ -151,6 +130,14 @@ def main(args: TrainingArgs):
     #################### Construct dataloaders & trainer #################
     dm = LMDataModule(training_args=args, tokenizer=tokenizer)
     lr_monitor = LearningRateMonitor(logging_interval="step")
+    wandb_disk_cleanup_callback = WandbCleanupDiskAndCloudSpaceCallback(cleanup_local=True, cleanup_online=False, size_limit=20)
+    checkpoint_callback = ModelCheckpoint(
+        filename="snap-{step}-samples-{progress/samples}-{progress/tokens}-loss-{val/loss:.2f}",
+        monitor="val/loss",
+        mode="min",
+        auto_insert_metric_name=False,
+        every_n_train_steps=int(args.save_interval),
+    )
     callbacks = [checkpoint_callback, wandb_disk_cleanup_callback, lr_monitor, ProgressMetricCallback()]
     if args.accelerator == "cuda":
         callbacks.append(CUDAMetricsCallback())
@@ -193,6 +180,7 @@ def main(args: TrainingArgs):
             f"Gradient accumulation steps: {args.gradient_accumulation_steps} | "
         )
 
+    ########### Start val & train loop ###########
     if args.val_before_training and not args.resume:
         # TODO: we could use a new trainer with Trainer(devices=1, num_nodes=1) to prevent samples from possibly getting replicated with DistributedSampler here.
         logger.info(f"Rank {current_process_rank} | Validation before training...")
