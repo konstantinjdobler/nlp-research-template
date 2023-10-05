@@ -2,6 +2,7 @@ import contextlib
 import os
 import subprocess
 import threading
+import time
 from pathlib import Path
 from time import sleep
 from typing import Any
@@ -9,9 +10,9 @@ from typing import Any
 import lightning as L
 import torch
 import wandb
-from lightning import Callback, Fabric
+from lightning import Callback, Fabric, LightningModule, Trainer
 from lightning.pytorch.loggers import WandbLogger as LightningWandbLogger
-from lightning.pytorch.utilities.rank_zero import rank_zero_only
+from lightning.pytorch.utilities.rank_zero import rank_zero_info, rank_zero_only
 from print_on_steroids import logger as cli_logger
 
 
@@ -133,3 +134,40 @@ class WandbCleanupDiskAndCloudSpaceCallback(Callback):
                 120.0, cache_cleanup_callback
             )  # Delay cleanupcall to avoid cleaning a temp file from the ModelCheckpoint hook that is needed to upload current checkpoint
             timer.start()
+
+
+class CUDAMetricsCallback(Callback):
+    """
+    Log CUDA stats. Adapted from https://github.com/Lightning-AI/lightning-GPT/blob/main/lightning_gpt/callbacks.py
+    """
+
+    def on_validation_end(self, trainer: "Trainer", pl_module: "LightningModule") -> None:
+        # Reset the memory use counter
+        torch.cuda.reset_peak_memory_stats(self.root_gpu(trainer))
+        torch.cuda.synchronize(self.root_gpu(trainer))
+        self.start_time = time.time()
+
+    def on_validation_start(self, trainer: "Trainer", pl_module: "LightningModule") -> None:
+        torch.cuda.synchronize(self.root_gpu(trainer))
+        max_memory = torch.cuda.max_memory_allocated(self.root_gpu(trainer)) / 2**20
+        start_time = getattr(self, "start_time", None)
+        if start_time:
+            time_since_last_validation = time.time() - self.start_time
+
+            max_memory = trainer.strategy.reduce(max_memory, reduce_op=torch.max)
+
+            time_since_last_validation = trainer.strategy.reduce(time_since_last_validation)
+
+            rank_zero_info(f"Average time: {time_since_last_validation:.2f} seconds")
+            rank_zero_info(f"Max Peak memory {max_memory:.2f}MiB")
+
+            trainer.logger.log_metrics(
+                {
+                    "System/Max. Peak CUDA memory": max_memory,
+                    "System/Avg. Training Time": time_since_last_validation,
+                },
+                step=trainer.fit_loop.epoch_loop._batches_that_stepped,
+            )
+
+    def root_gpu(self, trainer: "Trainer") -> int:
+        return trainer.strategy.root_device.index
