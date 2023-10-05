@@ -10,7 +10,7 @@ Alternatively, you can use `git subrepo` or `git subtree` to clone all files ins
 
 
 
-## `git subrepo`
+## `git subrepo` (Preferred)
 [`git subrepo`](https://github.com/ingydotnet/git-subrepo) fixes some peculiar "features" in `git subtree`, however you need to install the command.
 
 ### Installation
@@ -20,6 +20,12 @@ You need to install `git subrepo` once to add `dlib` to your repo.
 ```bash
 git clone https://github.com/ingydotnet/git-subrepo ~/git-subrepo
 echo 'source ~/git-subrepo/.rc' >> ~/.bashrc
+```
+
+or on MacOS:
+
+```zsh
+brew install git-subrepo
 ```
 
 ### Usage
