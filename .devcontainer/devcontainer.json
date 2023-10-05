@@ -14,8 +14,8 @@
 	// Specify which devices you want to use (e.g "device=0")
 	"runArgs": [
 		"--ipc=host",
-	//	"--gpus",
-	//	"device=CHANGE_ME"
+		//	"--gpus",
+		//	"device=CHANGE_ME"
 	],
 	// Optionally mount cache files like HuggingFace datasets cache. The user directory inside the container is /home/mamba/
 	// "mounts": [
@@ -38,13 +38,18 @@
 			// These depend on your preferences, we just want to give our recommendations here.
 			"extensions": [
 				"ms-python.python",
+				"VisualStudioExptTeam.vscodeintellicode",
+				"ms-python.vscode-pylance",
 				"github.copilot",
-				"percy.vscode-pydata-viewer",
 				"kevinrose.vsc-python-indent",
+				"ms-python.black-formatter",
+				"charliermarsh.ruff",
+				"ms-azuretools.vscode-docker",
+				// nice to have below
+				"jgclark.vscode-todo-highlight",
+				"percy.vscode-pydata-viewer",
 				"njqdev.vscode-python-typehint",
-				"ms-python.flake8",
-				"foxundermoon.shell-format",
-				"ms-azuretools.vscode-docker"
+				"foxundermoon.shell-format"
 			]
 		}
 	},

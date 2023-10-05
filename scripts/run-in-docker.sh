@@ -80,8 +80,9 @@ fi
 #  --env NCCL_NSOCKS_PERTHREAD --env NCCL_SOCKET_NTHREADS \
 
 # NOTE: --ipc=host for full RAM and CPU access or -m XXXG --cpus XX to control access to RAM and cpus
-# Add -p 5678:5678 to expose port 5678 for remote debugging. But keep in mind that this will block the port for other users on the server, so you might have to choose a different one.
 # You probably want to add addiitonal mounts to your homefolder, e.g. -v /home/username/data:/home/username/data
+# IMPORTANT: Use -v /home/username/.cache:/home/mamba/.cache to mount your cache folder to the docker container. The username inside the container is "mamba".
+# Add -p 5678:5678 to expose port 5678 for remote debugging. But keep in mind that this will block the port for other docker users on the server, so you might have to choose a different one.
 docker run --rm -it --ipc=host \
     -v "$(pwd)":/workspace -v /scratch/:/scratch/ -w /workspace \
     --user $(id -u):$(id -g) \

@@ -26,12 +26,14 @@ from src.helpers import (
 from src.model import BasicLM
 
 WANDB_PROJECT = "nlp-research-template"
-WANDB_ENTITY = "<enter here>"
+WANDB_ENTITY = "konstantinjdobler"
 
 
 def main(args: TrainingArgs):
 
     ########### CUDA checks ###########
+    current_process_rank = get_rank()
+    logger.config(rank=current_process_rank, print_rank0_only=True)
     if args.accelerator == "cuda":
         num_available_gpus = torch.cuda.device_count()
         if num_available_gpus > args.num_devices:
@@ -42,8 +44,6 @@ def main(args: TrainingArgs):
         if not torch.cuda.is_available():
             logger.error("CUDA is not available, you should change the accelerator with --accelerator cpu|tpu|mps.")
             exit(1)
-
-    current_process_rank = get_rank()
     if current_process_rank == 0 and args.debug:
         wait_for_debugger()
     args.seed = seed_everything(workers=True, seed=args.seed)
@@ -60,6 +60,7 @@ def main(args: TrainingArgs):
         entity=WANDB_ENTITY,
         log_model="all",
         tags=args.wandb_tags,
+        save_dir="logs/",
         **wandb_extra_args,
     )
     wandb_logger.log_hyperparams(dataclasses.asdict(args))
@@ -166,7 +167,7 @@ def main(args: TrainingArgs):
         gradient_clip_val=args.grad_clip,
         accumulate_grad_batches=args.gradient_accumulation_steps,
         fast_dev_run=args.fast_dev_run,
-        limit_val_batches=args.eval_samples // args.eval_micro_batch_size,
+        limit_val_batches=None if args.eval_samples == -1 else (args.eval_samples // args.eval_micro_batch_size),
         inference_mode=not args.compile,  # inference_mode for val/test and PyTorch 2.0 compiler don't like each other
     )
 
@@ -196,9 +197,11 @@ def main(args: TrainingArgs):
             "Detected keyboard interrupt, not trying to save latest checkpoint right now because we detected SLURM and do not want to drain the node..."
         )
     else:
-        logger.success("Fit complete, starting validation...")
-        # Validate after training has finished
-        trainer.validate(model, dm)
+        if trainer.interrupted:
+            logger.warning("Detected keyboard interrupt, trying to save latest checkpoint...")
+        else:
+            logger.success("Fit complete, starting validation...")
+            trainer.validate(model, dm)
 
         if current_process_rank == 0:
             logger.info("Trying to save checkpoint....")

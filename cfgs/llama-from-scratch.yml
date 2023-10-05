@@ -1,0 +1,9 @@
+base_unit: tokens
+training_goal: 3_000_000_000_000
+eval_interval: 0.05
+save_interval: 0.25
+warmup_period: 0.005
+block_size: 4096
+model_path: meta-llama/llama-2-7b-hf
+precision: bf16-mixed
+language_modeling_objective: clm

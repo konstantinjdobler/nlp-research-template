@@ -50,9 +50,12 @@ class LMDataModule(L.LightningDataModule):
     def prepare_data(self) -> None:
         cache_exists, cache_path = self._get_dataset_cache_path(self.tokenizer_path)
         if not cache_exists:
+            logger.info(f"Could not find cached processed dataset: {cache_path}, creating it now...")
             processed_datasets = self.load_and_process_dataset(self.tokenizer, str(self.data_dir / "tokenized"))
             logger.info(f"Saving dataset to {cache_path}...")
             processed_datasets.save_to_disk(cache_path, num_proc=self.args.preprocessing_workers)
+        else:
+            logger.success(f"Found cached processed dataset: {cache_path}.")
         if self.args.data_preprocessing_only:
             exit(0)
 
@@ -62,6 +65,7 @@ class LMDataModule(L.LightningDataModule):
             cache_exists
         ), f"Could not find cached processed dataset: {cache_path}, should have been created in prepare_data()"
 
+        logger.info(f"Loading cached processed dataset from {cache_path}...", rank0_only=False)
         processed_datasets = datasets.load_from_disk(cache_path)
 
         pad_to_multiple_of = 8 if self.args.precision in ["16-mixed", "bf16-mixed"] else None

@@ -1,8 +1,11 @@
 # An opinionated template for NLP research code
 
-[![Docker Hub](https://img.shields.io/docker/v/konstantinjdobler/nlp-research-template/latest?color=blue&label=docker&logo=docker)](https://hub.docker.com/r/konstantinjdobler/nlp-research-template/tags) [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black) ![License: MIT](https://img.shields.io/github/license/konstantinjdobler/nlp-research-template?color=green)
+[![Docker Hub](https://img.shields.io/docker/v/konstantinjdobler/nlp-research-template/latest?color=blue&label=docker&logo=docker)](https://hub.docker.com/r/konstantinjdobler/nlp-research-template/tags)
+[![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
+![Linter](https://img.shields.io/badge/linter-ruff-blue)
+![License: MIT](https://img.shields.io/github/license/konstantinjdobler/nlp-research-template?color=green)
 
-NLP research template for training language models from scratch using PyTorch + PyTorch Lightning + Weights & Biases + HuggingFace. It's built to be customized but provides comprehensive, sensible default functionality.
+NLP research template for training language models using PyTorch + Lightning + Weights & Biases + HuggingFace. It's built to be customized but provides comprehensive, sensible default functionality.
 
 ## Setup
 
@@ -53,9 +56,7 @@ You can then activate your environment with
 mamba activate gpt5
 ```
 
-To generate new lockfiles after updating the `environment.yml` file, simply run `conda-lock` in the directory with your `environment.yml` file.
-
-For more advanced usage of environments (e.g. updating or removing environments) have a look at the [conda-documentation](https://conda.io/projects/conda/en/latest/user-guide/tasks/manage-environments.html#removing-an-environment).
+To generate new lockfiles after updating the `environment.yml` file, simply run `conda-lock -f environment.yml`.
 
 <details><summary>Setup on <code>ppc64le</code></summary>
 
@@ -79,37 +80,24 @@ conda-lock --file ppc64le.environment.yml --lockfile ppc64le.conda-lock.yml
 </p>
 </details>
 
-### Docker
+### Docker (recommended)
 
 For fully reproducible environments and running on HPC clusters, we provide pre-built docker images at [konstantinjdobler/nlp-research-template](https://hub.docker.com/r/konstantinjdobler/nlp-research-template/tags). We also provide a `Dockerfile` that allows you to build new docker images with updated dependencies:
 
 ```bash
+# first update `environment.yml` with your dependencies
+# then this command will create a new conda-lock.yml file
+conda-lock -f environment.yml
+```
+
+```bash
+# this automatically uses your latest conda-lock.yml to create a reproducible docker image
 docker build --tag <username>/<imagename>:<tag> --platform=linux/amd64 .
 ```
 
-The specified username should be your personal [`dockerhub`](https://hub.docker.com) username. This will make distribution and reusage of your images easier.
+The specified username should be your personal [`dockerhub`](https://hub.docker.com) username. This will make distribution and reusage of your images easier with `docker push/pull <your image>`.
 
-## Development
-
-Development for ML can be quite resource intensive. If possible, you can start your development on a more powerful host machine to which you connect to from your local machine. Normally, you would set up the correct environment on the host machine as explained above but this workflow is simplified a lot by using `VS Code Dev Containers`. They allow you to develop inside a docker container with all necessary dependencies pre-installed. The template already contains a `.devcontainer` directory, where all the settings for it are stored - you can start right away!
-
-<details><summary>VS Code example</summary>
-
-<p>
-
-After having installed the [Remote-SSH-](https://code.visualstudio.com/docs/remote/ssh), and [Dev Containers-Extension](https://code.visualstudio.com/docs/devcontainers/containers), you set up your `Dev Container` in the following way:
-
-1. Establish the SSH-connection with the host by opening your VS Code command pallet and typing <code>Remote-SSH: Connect to Host</code>. Now you can connect to your host machine.
-2. Open the folder that contains this template on the host machine.
-3. VS Code will automatically detect the `.devcontainer` directory and ask you to reopen the folder in a Dev Container.
-4. Press <code>Reopen in Container</code> and wait for VS Code to set everything up.
-
-When using this workflow you will have to adapt `"runArgs": ["--ipc=host", "--gpus", "device=CHANGE_ME"]` in [`.devcontainer/devcontainer.json`](.devcontainer/devcontainer.json) and specify the GPU-devices you are actually going to use on the host machine for your development. Optionally you can mount cache files with `"mounts": ["source=/MY_HOME_DIR/.cache,target=/home/mamba/.cache,type=bind"]`. `conda-lock` is automatically installed for you in the Dev Container.
-
-Additionally, you can set the `WANDB_API_KEY` in your remote environment; it will then be automatically mapped into the container.
-
-</p>
-</details>
+We also provide shell commands and a convenience script to run all your training commands inside docker (recommended).
 
 ## Training
 
@@ -125,35 +113,37 @@ To see an overview over all options and their defaults, run `python train.py --h
 
 <p>
 
-By default, `train.py` already detects all available CUDA GPUs and uses `DistributedDataParallel` training in case multiple GPUs are found. You can manually select specific GPUs with `--cuda_device_ids`. To use different hardware accelerators, use the `--accelerator` flag. You can use advanced parallel training strategies with `--distributed_strategy`.
+By default, `train.py` tries to use a single CUDA GPU if available. If you want to train on multiple GPUs, increase the `--num_devices` flag (this then uses `DistributedDataParallel` under the hood). **IMPORTANT:** you should always select the GPUs that are visible to the script via the `CUDA_VISIBLE_DEVICES` environment variable (e.g. `CUDA_VISIBLE_DEVICES=0,2 python train.py ...`) or via the docker flags if training inside a container (recommended). To use different hardware accelerators, use the `--accelerator` flag. You can use advanced parallel training strategies with `--distributed_strategy`.
 
 </p>
 </details>
 
-### Using the Docker environment for training
+### Using the Docker for training (recommended)
 
-To run the training code inside the docker environment, start your container by executing the [console.sh](./scripts/console.sh) script. Inside the container you can now execute your training script as before.
+To conveniently run the training code inside a docker container, you can use the [run-in-docker.sh](./scripts/run-in-docker.sh) script.
 
 ```bash
-bash ./scripts/console.sh   # use this to start the container
-python train.py -n <run-name> -d /path/to/data/ --model roberta-base --offline # execute the training inside your container
+# execute the training inside your container
+# -g 2 means only GPU 2 is visible to the script
+# -g 0,2 would make the GPUs 0 and 2 visible
+bash ./scripts/run-in-docker.sh -g 2 python train.py --num_devices 1 -n <run-name> -d /path/to/data/ --model roberta-base --offline
 ```
 
-Like when using a [`Dev Container`](#development), by default no GPUs are available inside the container and caches written to `~/.cache` inside the container will not be persistent. You can modify the [console.sh](./scripts/console.sh) script to select GPUs for training, a persistent cache directory and the docker image for the container. Also, make sure to mount the data directory into the container.
+By default (no `-g` flag), no GPUs are available inside the container. You probably want to adjust the `run-in-docker.sh` script to add your own mounts for data and other things you want to load / save.
 
-**Docker + GPUs:** Always select specififc GPUs via `docker` (e.g. `--gpus device=0,7` for the GPUs with indices `0` and `7` in [console.sh](./scripts/console.sh)) and set the `train.py` script to use all available GPUs for training with `--num_devices=-1` (which is the default).
-
-**Note:** In order to mount a directory for caching you need to have one created first.
+**Docker + GPUs:** You should **always select specific GPUs** to be visible inside the container. When using the `run-in-docker.sh` script, use the `-g` flag. When using docker natively, use e.g. `--gpus='"device=0,7"'` (for the GPUs `0` and `7`) and adjust the `--num_devices` flag according to your number of selected GPUs. Yes, the weird format of `--gpus='"device=0,7"'` is important, otherwise the shell might not pass the flag correctly to `nvidia-docker` (official Nvidia recommendation).
 
 <details><summary>Single-line docker command</summary>
 
 <p>
 
-You can start a script inside a docker container in a single command (caches are not persistent in this example):
+You can start a script inside a docker container in a single command:
 
 ```bash
-docker run -it --user $(id -u):$(id -g) --ipc host -v "$(pwd)":/workspace -w /workspace --gpus device=0,7 konstantinjdobler/nlp-research-template:latest python train.py --num_devices=-1 ...
+docker run -it --user $(id -u):$(id -g) --ipc host -v "$(pwd)":/workspace -w /workspace --gpus='"device=7"' konstantinjdobler/nlp-research-template:latest python train.py --num_devices=1 ...
 ```
+
+Since we have not mounted any cache directories (only the current working directory with `$(pwd)`), nothing that is written to disk outside `$(pwd)` is persistent in this example. You can add those with `-v` or `--mount`.
 
 </p>
 </details>
@@ -170,20 +160,62 @@ srun ... --container-image konstantinjdobler/nlp-research-template:latest python
 
 This uses [`enroot`](https://github.com/NVIDIA/enroot) under the hood to import your docker image and run your code inside the container. See the [`pyxis` documentation](https://github.com/NVIDIA/pyxis) for more options, such as `--container-mounts` or `--container-writable`.
 
-If you want to run an interactive session with bash don't forget the `--pty` flag, otherwise the environment won't be activated properly.
+It might take a long time to start the container. You can prepare this by doing `enroot import docker://konstantinjdobler/nlp-research-template:latest -o prepared-image.sqsh` and then modify the `srun`:
+
+```bash
+srun ... --container-image /path/to/prepared-image.sqsh python train.py ...
+```
+
+If you want to run an interactive session with bash don't forget the `--pty` flag.
 
 </p>
 </details>
 
 ### Weights & Biases
 
-Weights & Biases is a platform that provides an easy way to log training results for ML researchers. It lets you create checkpoints of your best models, can save the hyperparameters of your model and even supports Sweeps for hyperparameter optimization. For more information you can visit the [website](https://wandb.ai/site). To enable Weights & Biases, enter your `WANDB_ENTITY` and `WANDB_PROJECT` in [dlib/frameworks/wandb.py](dlib/frameworks/wandb.py) and omit the `--offline` flag for training.
+[Weights & Biases](https://wandb.ai/site) allows you to easily log metrics, training results, checkpoints, and hyperparameters. To enable Weights & Biases, enter your `WANDB_ENTITY` and `WANDB_PROJECT` in [train.py](train.py) and omit the `--offline` flag for training.
 
 <details><summary>Weights & Biases + Docker</summary>
 
 <p>
 
-When using docker you also have to provide your `WANDB_API_KEY`. You can find your personal key at [wandb.ai/authorize](https://app.wandb.ai/authorize). Either set `WANDB_API_KEY` on your host machine and use the `docker` flag `--env WANDB_API_KEY` when starting your run or use `wandb docker-run` instead of docker run.
+When using docker we also have to get our `WANDB_API_KEY` inside the container. You can find your personal API key at [wandb.ai/authorize](https://app.wandb.ai/authorize). Set `WANDB_API_KEY` on your host machine and use the `docker` flag `--env WANDB_API_KEY` when starting your run. Or just use the `run-in-docker.sh` script, which will try to parse the `WANDB_API_KEY` from your `~/.netrc` file (or get it from the environment).
 
 </p>
 </details>
+
+### Configs
+
+To save the exact configurations of experiments and save yourself some time typing out arguments in the command line, you can use `.yml` style config files supplied via the `--config_path` argument. You can also combine multiple configs. The order of importance is default args < config args (multiple configs are resolved in order) < command line args.
+
+```bash
+python train.py --config_path ./cfgs/example.yml ./cfgs/llama-from-scratch.yml --devices 8 -n my-training-run ...
+```
+
+## Development
+
+If you want to connect to a remote host machine with GPUs for development, we recommend the VS Code [Remote-SSH](https://code.visualstudio.com/docs/remote/ssh) extension. Ideally, you should also do your development inside docker to reduce a mismatch between training and development. There are two options:
+
+1. Use VS Code `Dev Containers`. They allow you to develop in VS Code inside a docker container with all necessary dependencies pre-installed. The template already contains a `.devcontainer` directory, where all the settings for it are stored - you can start right away!
+2. Start any development runs in a docker container just as you would for training like described above. This is more flexible but to get full type hinting, auto complete etc. you will need to create a `mamba` environment on the host machine with all the dependencies with `conda-lock install --name gpt5 conda-lock.yml`. Be careful to keep your `mamba` environment and docker image used for running things in sync.
+
+<details><summary>VS Code <code>Dev Container</code> example</summary>
+
+<p>
+
+After having installed the [Remote-SSH-](https://code.visualstudio.com/docs/remote/ssh), and [Dev Containers-Extension](https://code.visualstudio.com/docs/devcontainers/containers), you set up your `Dev Container` in the following way:
+
+1. Establish the SSH-connection with the host by opening your VS Code command pallete and typing <code>Remote-SSH: Connect to Host</code>. Now you can connect to your host machine.
+2. Open the folder that contains this template on the host machine.
+3. VS Code will automatically detect the `.devcontainer` directory and ask you to reopen the folder in a Dev Container.
+4. Press <code>Reopen in Container</code> and wait for VS Code to set everything up.
+
+If you want to use GPUs for development, have a look inside [`.devcontainer/devcontainer.json`](.devcontainer/devcontainer.json) and specify the GPU you want to use. As with regular docker, you will want to adjust the mounts so that your cache directories are mounted inside the container. `conda-lock` is automatically installed for you in the Dev Container.
+Additionally, you can set the `WANDB_API_KEY` in your remote environment; it will then be automatically mapped into the container.
+
+</p>
+</details>
+
+### Code style
+
+We use the `ruff` linter and `black` formatter. You should install their VS Code extensions and enable "Format on Save" inside VS Code.

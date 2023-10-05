@@ -2,7 +2,6 @@ import os
 import re
 from typing import Any
 
-import lightning.pytorch as pl
 from lightning import Trainer
 from lightning.pytorch.callbacks import Callback
 from lightning.pytorch.utilities.rank_zero import rank_zero_only
@@ -58,6 +57,10 @@ def check_checkpoint_path_for_wandb(checkpoint_path: str):
 
 
 class ProgressMetricCallback(Callback):
+    """
+    # BUG: Tying the validation progress to the number of samples and tokens is not working yet.
+    """
+
     def __init__(
         self,
         samples_processed=0.0,
@@ -77,19 +80,28 @@ class ProgressMetricCallback(Callback):
             {
                 "progress/samples": self.samples_processed,
                 "progress/tokens": self.tokens_processed,
-                "trainer/global_step": trainer.global_step,
+                "trainer/global_step": float(trainer.global_step),
             },
             rank_zero_only=True,
             on_step=True,
             on_epoch=False,
         )
 
-    def on_validation_end(self, trainer: Trainer, pl_module: Any) -> None:
+    def on_validation_batch_end(
+        self,
+        trainer: Trainer,
+        pl_module: Any,
+        outputs: STEP_OUTPUT | None,
+        batch: Any,
+        batch_idx: int,
+        dataloader_idx: int = 0,
+    ) -> None:
+
         self.log_dict(
             {
                 "progress/samples": self.samples_processed,
                 "progress/tokens": self.tokens_processed,
-                "trainer/global_step": trainer.global_step,
+                "trainer/global_step": float(trainer.global_step),
             },
             rank_zero_only=True,
             on_step=True,
