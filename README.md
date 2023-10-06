@@ -7,7 +7,7 @@
 
 NLP research template for training language models using PyTorch + Lightning + Weights & Biases + HuggingFace. It's built to be customized but provides comprehensive, sensible default functionality.
 
-If you are not doing NLP or do not care about our training logic, the setup and environment tooling in this template might still be interesting for you.
+If you are not doing NLP or want to use your own training code or template, the setup and environment tooling with Docker, `mamba`, and `conda-lock` in this template might still be interesting for you.
 
 ## Setup
 
