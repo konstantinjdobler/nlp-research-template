@@ -108,7 +108,7 @@ class BasicLM(L.LightningModule):
             scheduler_config = {"frequency": self.eval_interval, "monitor": "train/loss"}
         else:
             scheduler_name = self.lr_schedule
-            if scheduler_name == "constant" and self.eval_interval > 0:
+            if scheduler_name == "constant" and self.warmup_period > 0:
                 scheduler_name += "_with_warmup"
             scheduler = get_scheduler(
                 scheduler_name,
