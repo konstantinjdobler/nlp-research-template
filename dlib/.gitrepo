@@ -6,7 +6,7 @@
 [subrepo]
 	remote = https://github.com/konstantinjdobler/dlib.git
 	branch = main
-	commit = e9cf6cdaf363bb915eb8563f50c329e4ecf00329
-	parent = 0841751b9773c11a1a28d29547e97295bd730319
+	commit = 416ee96fdd53743cccb54fce641918bc62f18fa7
+	parent = 9c612bf35bba2a75c595658b325cdccfbf6d3abb
 	method = merge
 	cmdver = 0.4.6
