@@ -11,3 +11,6 @@ grad_clip: 1.0
 hf_model_name: roberta-base
 precision: bf16-mixed
 wandb_tags: ["research-template"]
+data_dir: "./data/mock"
+train_file: "train.txt"
+val_file: "val.txt"
