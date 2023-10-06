@@ -2,14 +2,11 @@ from typing import Literal
 
 import lightning as L
 import torch
-from loguru import logger
+from print_on_steroids import logger
 from torch.optim import AdamW
 from transformers.modeling_utils import PreTrainedModel
 from transformers.models.auto.configuration_auto import AutoConfig
-from transformers.models.auto.modeling_auto import (
-    AutoModelForCausalLM,
-    AutoModelForMaskedLM,
-)
+from transformers.models.auto.modeling_auto import AutoModelForCausalLM, AutoModelForMaskedLM
 from transformers.optimization import get_scheduler
 from warmup_scheduler import GradualWarmupScheduler
 

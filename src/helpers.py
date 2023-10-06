@@ -6,7 +6,7 @@ from lightning import Trainer
 from lightning.pytorch.callbacks import Callback
 from lightning.pytorch.utilities.rank_zero import rank_zero_only
 from lightning.pytorch.utilities.types import STEP_OUTPUT
-from loguru import logger
+from print_on_steroids import logger
 
 from dlib.frameworks.pytorch import get_rank
 
