@@ -12,7 +12,6 @@ import lightning as L
 from print_on_steroids import logger
 from torch.utils.data.dataloader import DataLoader
 from transformers import DataCollatorForLanguageModeling, PreTrainedTokenizerFast
-from transformers.data.data_collator import DataCollatorForWholeWordMask
 
 from dlib.frameworks.pytorch import get_rank
 
@@ -25,8 +24,6 @@ class LMDataModule(L.LightningDataModule):
         self,
         training_args: "TrainingArgs",
         tokenizer: PreTrainedTokenizerFast,
-        mlm_probability=0.15,
-        whole_word_masking=False,
     ):
         super().__init__()
         self.args = training_args
@@ -40,8 +37,6 @@ class LMDataModule(L.LightningDataModule):
 
         self.train_file = str(train_file)
         self.val_file = str(val_file)
-        self.mlm_probability = mlm_probability
-        self.whole_word_masking = whole_word_masking
         self.tokenizer_path = self.args.tokenizer_path or self.args.hf_model_name
         self.local_rank = get_rank()
 
@@ -74,11 +69,10 @@ class LMDataModule(L.LightningDataModule):
                 tokenizer=self.tokenizer, mlm=False, pad_to_multiple_of=pad_to_multiple_of
             )
         elif self.args.language_modeling_objective == "mlm":
-            DataCollatorClass = DataCollatorForWholeWordMask if self.whole_word_masking else DataCollatorForLanguageModeling
+            DataCollatorClass = DataCollatorForLanguageModeling
             data_collator = DataCollatorClass(
                 tokenizer=self.tokenizer,
                 mlm=True,
-                mlm_probability=self.mlm_probability,
                 pad_to_multiple_of=pad_to_multiple_of,
             )
 

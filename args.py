@@ -150,6 +150,7 @@ class TrainingArgs:
     "Do fast run through training and validation with reduced sizes."
 
     def __post_init__(self):
+        assert self.num_devices > 0
         if self.micro_batch_size is None:
             # NOTE: you need to make sure that micro_batch_size can fit into the GPU memory
             self.micro_batch_size = self.batch_size // self.num_devices

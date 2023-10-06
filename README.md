@@ -7,6 +7,8 @@
 
 NLP research template for training language models using PyTorch + Lightning + Weights & Biases + HuggingFace. It's built to be customized but provides comprehensive, sensible default functionality.
 
+If you are not doing NLP or do not care about our training logic, the setup and environment tooling in this template might still be interesting for you.
+
 ## Setup
 
 ### Preliminaries
@@ -92,7 +94,7 @@ conda-lock -f environment.yml
 
 ```bash
 # this automatically uses your latest conda-lock.yml to create a reproducible docker image
-docker build --tag <username>/<imagename>:<tag> --platform=linux/amd64 .
+docker build --tag <username>/<imagename>:<tag> --platform="linux/amd64" .
 ```
 
 The specified username should be your personal [`dockerhub`](https://hub.docker.com) username. This will make distribution and reusage of your images easier with `docker push/pull <your image>`.
@@ -107,7 +109,7 @@ After all of this setup you are finally ready for some training. First of all, y
 python train.py -n <run-name> -d /path/to/data --model roberta-base --offline
 ```
 
-To see an overview over all options and their defaults, run `python train.py --help`. We have disabled Weights & Biases syncing with the `--offline` flag. If you want to log your results, enable W&B as described [here](#weights--biases) and omit the `--offline` flag.
+To see an overview over all options and their defaults, run `python train.py --help` or have a look inside [`args.py`](./args.py). We have disabled Weights & Biases syncing with the `--offline` flag. If you want to log your results, enable W&B as described [here](#weights--biases) and omit the `--offline` flag.
 
 <details><summary>Using GPUs for hardware acceleration</summary>
 

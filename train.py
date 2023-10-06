@@ -3,6 +3,7 @@ import os
 from pathlib import Path
 
 import torch
+import wandb
 from lightning import Trainer, seed_everything
 from lightning.pytorch.callbacks import LearningRateMonitor, ModelCheckpoint
 from lightning.pytorch.loggers.wandb import WandbLogger
@@ -11,12 +12,8 @@ from print_on_steroids import graceful_exceptions, logger
 from simple_parsing import parse
 from transformers import AutoTokenizer, PreTrainedTokenizerFast
 
-import wandb
 from args import TrainingArgs
-from dlib import get_rank
-from dlib.frameworks.fabric_lightning import CUDAMetricsCallback, WandbCleanupDiskAndCloudSpaceCallback
-from dlib.slurm import log_slurm_info
-from dlib.utils import wait_for_debugger
+from dlib import CUDAMetricsCallback, WandbCleanupDiskAndCloudSpaceCallback, get_rank, log_slurm_info, wait_for_debugger
 from src.data_loading import LMDataModule
 from src.helpers import (
     ProgressMetricCallback,
@@ -30,17 +27,16 @@ WANDB_ENTITY = "konstantinjdobler"
 
 
 def main(args: TrainingArgs):
-
     ########### CUDA checks ###########
     current_process_rank = get_rank()
     logger.config(rank=current_process_rank, print_rank0_only=True)
     if args.accelerator == "cuda":
         num_available_gpus = torch.cuda.device_count()
         if num_available_gpus > args.num_devices:
-            logger.error(
-                f"Requested {args.num_devices} GPUs but {num_available_gpus} are available. Using first {args.num_devices} GPUs. You should set CUDA_VISIBLE_DEVICES to the desired GPU ids."
+            logger.warning(
+                f"Requested {args.num_devices} GPUs but {num_available_gpus} are available.",
+                f"Using first {args.num_devices} GPUs. You should set CUDA_VISIBLE_DEVICES or the docker --gpus flag to the desired GPU ids.",
             )
-            exit(1)
         if not torch.cuda.is_available():
             logger.error("CUDA is not available, you should change the accelerator with --accelerator cpu|tpu|mps.")
             exit(1)
@@ -178,6 +174,7 @@ def main(args: TrainingArgs):
             f"Validation Frequency: {args.eval_interval} | "
             f"Model Log Frequency: {args.save_interval} | "
             f"Effective batch size: {args.batch_size} | "
+            f"Micro batch size (per device and forward pass): {args.eval_micro_batch_size} | "
             f"Gradient accumulation steps: {args.gradient_accumulation_steps} | "
         )
 
