@@ -1,36 +1,63 @@
 // For format details, see https://aka.ms/devcontainer.json. For config options, see the
 // README at: https://github.com/devcontainers/templates/tree/main/src/docker-existing-dockerfile
 {
-	"name": "Existing Dockerfile",
-	"build": {
-		// Sets the run context to one level up instead of the .devcontainer folder.
-		"context": "..",
-		// Update the 'dockerFile' property if you aren't using the standard 'Dockerfile' filename.
-		"dockerfile": "../Dockerfile",
-		"args": {
-			"OS_SELECTOR": "ubuntu" // force ubuntu base OS for devcontainer
-		}
-	},
-	// Specify which devices you want to use (e.g "device=0")
+	"name": "Existing Pre-built docker image",
+	// Put your own built docker image here
+	"image": "konstantinjdobler/nlp-research-template:latest",
+	//-------------------------------------------------
+	// ---- Alternative: let VS Code build the image---
+	// ------------------------------------------------
+	// "build": {
+	// 	// Sets the run context to one level up instead of the .devcontainer folder.
+	// 	"context": "..",
+	// 	// Update the 'dockerFile' property if you aren't using the standard 'Dockerfile' filename.
+	// 	"dockerfile": "../Dockerfile",
+	//	// "args": {
+	//	// 	"OS_SELECTOR": "ubuntu" // force ubuntu base OS for devcontainer, necessary  if you want to use "features"
+	//	// }
+	// },
+	////////////////////////////////////////////////////////////
+	// -----------------------------------
+	// CUSTOMIZE SOME THINGS BELOW HERE !!!!!
+	// -----------------------------------
+	////////////////////////////////////////////////////////////
+	// Specify which GPU device you want to use (e.g "device=0")
 	"runArgs": [
 		"--ipc=host",
 		//	"--gpus",
 		//	"device=CHANGE_ME"
 	],
-	// Optionally mount cache files like HuggingFace datasets cache. The user directory inside the container is /home/mamba/
+	// ------------------------------------------------------------
+	// Setup your mounts and env vars like for a docker run command
+	// ------------------------------------------------------------
+	// Mount cache files like HuggingFace datasets cache. The user directory inside the container is /home/mamba/
+	// Paths need to be absolute, so we use the localEnv variable to get the local user home directory
+	// Check HF_DATASETS_CACHE, WANDB_DATA_DIR, XDG_CACHE_HOME etc. env vars to see what you need to mount
 	// "mounts": [
-	// 	"source=/MY_HOME_DIR/.cache,target=/home/mamba/.cache,type=bind"
+	// "source=/scratch/YOUR_USERNAME/data,target=/scratch/YOUR_USERNAME/data,type=bind",
+	// "source=/scratch/YOUR_USERNAME/cache,target=/scratch/YOUR_USERNAME/cache,type=bind"
 	// ],
+	"mounts": [
+		"source=${localEnv:HOME}/.netrc,target=/home/mamba/.netrc,type=bind", // this is to get WANDB_API_KEY from .netrc
+		"source=${localEnv:HOME}/.cache,target=/home/mamba/.cache,type=bind",
+	],
 	"remoteEnv": {
-		"WANDB_API_KEY": "${localEnv:WANDB_API_KEY}"
+		"WANDB_API_KEY": "${localEnv:WANDB_API_KEY}",
+		// "WANDB_DATA_DIR": "${localEnv:WANDB_DATA_DIR}",
+		// "WANDB_DIR": "${localEnv:WANDB_DIR}",
+		// "HF_DATASETS_CACHE": "${localEnv:HF_DATASETS_CACHE}",
+		// "XDG_CACHE_HOME": "${localEnv:XDG_CACHE_HOME}", // if you use a custom cache dir
 	},
+	////////////////////////////////////////////////////////////////////
+	// -----------------------------------------------------
+	// END CUSTOMIZATION OF ENV VARS, MOUNTS, RUN ARGS etc.
+	// -----------------------------------------------------
+	////////////////////////////////////////////////////////////////////
 	// Features to add to the dev container. More info: https://containers.dev/features.
-	"features": {
-		"ghcr.io/devcontainers/features/git:1.1.5": {},
-		"ghcr.io/devcontainers-contrib/features/flake8:2": {},
-		"ghcr.io/devcontainers-contrib/features/black:2": {},
-		"ghcr.io/devcontainers-contrib/features/isort:2": {}
-	},
+	// Doesn't work with centOS / RHEL base simages, which we use
+	// "features": {
+	// "ghcr.io/devcontainers/features/git:1.1.5": {},
+	// },
 	"customizations": {
 		// Configure properties specific to VS Code.
 		"vscode": {
