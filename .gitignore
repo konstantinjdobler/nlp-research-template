@@ -1,4 +1,6 @@
-data/**/*
+data/*
+!data/mock/
+data/mock/tokenized/*
 logs/
 # experiment output logs
 wandb/

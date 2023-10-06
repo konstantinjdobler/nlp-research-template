@@ -3,11 +3,11 @@ training_goal: 1_000_000_000
 eval_interval: 0.05
 save_interval: 0.25
 warmup_period: 0.005
-block_size: 1024
+block_size: 512
 batch_size: 512
 weight_decay: 0.1
 learning_rate: 2e-4
 grad_clip: 1.0
-model_path: roberta-base
+hf_model_name: roberta-base
 precision: bf16-mixed
-tags: ["research-template", "roberta-base"]
+wandb_tags: ["research-template"]
