@@ -19,7 +19,7 @@ class TrainingArgs:
     "HuggingFace model identifier. This is used to construct the model architecture and load pretrained weights if not specified otherwise."
 
     from_scratch: bool = field(default=False)
-    "Do not use pre-trained weights to intialize the model."
+    "Do not use pre-trained weights to initialize the model."
 
     saved_checkpoint_path: str | None = field(default=None, alias="--checkpoint")
     "Path to a saved pytorch-lightning checkpoint. Use the wandb:<wandb-run-id> syntax to load a checkpoint from W&B."

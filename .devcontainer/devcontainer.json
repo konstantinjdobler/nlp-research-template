@@ -54,7 +54,7 @@
 	// -----------------------------------------------------
 	////////////////////////////////////////////////////////////////////
 	// Features to add to the dev container. More info: https://containers.dev/features.
-	// Doesn't work with centOS / RHEL base simages, which we use
+	// Doesn't work with centOS / RHEL base images, which we use
 	// "features": {
 	// "ghcr.io/devcontainers/features/git:1.1.5": {},
 	// },

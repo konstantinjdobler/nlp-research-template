@@ -73,7 +73,7 @@ Setting up the environment <code>ppc64le</code> is a bit tricky because the offi
 conda-lock install --name gpt5-ppc64le ppc64le.conda-lock.yml
 ```
 
-Dependencies for <code>ppce64le</code> should go into the seperate <code>ppc64le.environment.yml</code> file. Use the following command to generate a new lockfile after updating the dependencies:
+Dependencies for <code>ppc64le</code> should go into the separate <code>ppc64le.environment.yml</code> file. Use the following command to generate a new lockfile after updating the dependencies:
 
 ```bash
 conda-lock --file ppc64le.environment.yml --lockfile ppc64le.conda-lock.yml
@@ -97,7 +97,7 @@ conda-lock -f environment.yml
 docker build --tag <username>/<imagename>:<tag> --platform="linux/amd64" .
 ```
 
-The specified username should be your personal [`dockerhub`](https://hub.docker.com) username. This will make distribution and reusage of your images easier with `docker push/pull <your image>`.
+The specified username should be your personal [`dockerhub`](https://hub.docker.com) username. This will make distribution and usage of your images easier with `docker push/pull <your image>`.
 
 We also provide shell commands and a convenience script to run all your training commands inside docker (recommended).
 
@@ -200,7 +200,7 @@ If you want to connect to a remote host machine with GPUs for development, we re
 
 ### Dev Containers **(recommended)**
 
-Ideally, you should also do your development inside the same docker container to reduce a mismatch between training and development. For this, use VS Code `Dev Containers`. They allow you to develop in VS Code inside a docker container with full support for IntelliSense, typehints and more. The template already contains a `.devcontainer` directory, where all the settings for it are stored - you can start right away!
+Ideally, you should also do your development inside the same docker container to reduce a mismatch between training and development. For this, use VS Code `Dev Containers`. They allow you to develop in VS Code inside a docker container with full support for IntelliSense, type hints and more. The template already contains a `.devcontainer` directory, where all the settings for it are stored - you can start right away!
 
 <details><summary>VS Code <code>Dev Container</code> example</summary>
 
@@ -211,9 +211,9 @@ After having installed the [Remote-SSH-](https://code.visualstudio.com/docs/remo
 1. Establish the SSH-connection with the host by opening your VS Code command pallette and typing <code>Remote-SSH: Connect to Host</code>. Now you can connect to your host machine.
 2. Open the folder that contains this template on the host machine.
 3. VS Code will automatically detect the `.devcontainer` directory and ask you to reopen the folder in a Dev Container. Alternatively, use the command pallette and type <code>Dev Containers</code>.
-4. Press <code>Reopen in Container</code> and wait for VS Code to set everything up. for the first time or when you change `cevontainer.json`, you will need to do <code>Rebuild and reopen in Container</code>.
+4. Press <code>Reopen in Container</code> and wait for VS Code to set everything up. for the first time or when you change `devcontainer.json`, you will need to do <code>Rebuild and reopen in Container</code>.
 
-There is a bit of setup: for a propoer dev environment, you will need to configure mounts (cache directories, your datasets, ...) and environment variables like for a regular docker run command, have a look inside [`.devcontainer/devcontainer.json`](.devcontainer/devcontainer.json).
+There is a bit of setup: for a proper dev environment, you will need to configure mounts (cache directories, your datasets, ...) and environment variables like for a regular docker run command, have a look inside [`.devcontainer/devcontainer.json`](.devcontainer/devcontainer.json).
 `conda-lock` is automatically installed for you but you have to add the `--micromamba` flag inside the Dev Container (e.g. `conda-lock --micromamba -f environment.yml`).
 
 If you want to use GPUs for development, you also need to specify the GPU you want to use in [`.devcontainer/devcontainer.json`](.devcontainer/devcontainer.json). However, this is a bit cumbersome if you are often switching between GPUs. Alternatively, you edit your code in the Dev Container (without a GPU) but start all actual development runs of your script like you would for training with `run-in-docker.sh` and select the GPU ad-hoc. The nice advantage of Dev Containers is that you are still using the exact same docker container for both.
@@ -223,7 +223,7 @@ If you want to use GPUs for development, you also need to specify the GPU you wa
 
 ### `mamba` and `conda-lock`
 
-Sometimes it's just quicker or unavoidable to create an evironment via `conda-lock install --name gpt5 conda-lock.yml` instead of using Docker. In most cases, this is fine since we are using lockfiles but there might be some tricky edge cases depending on the platform and OS. Just be careful to keep any local environemnts and your docker containers in sync. Docker containers also allow more advanced support for compiled CUDA kernels such as FlashAttention.
+Sometimes it's just quicker or unavoidable to create an environment via `conda-lock install --name gpt5 conda-lock.yml` instead of using Docker. In most cases, this is fine since we are using lockfiles but there might be some tricky edge cases depending on the platform and OS. Just be careful to keep any local environments and your docker containers in sync. Docker containers also allow more advanced support for compiled CUDA kernels such as FlashAttention.
 
 ### Code style
 
