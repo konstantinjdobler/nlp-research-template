@@ -13,9 +13,9 @@
 version: 1
 metadata:
   content_hash:
-    linux-64: b88152374daa44f42bee23b93199de847f0636d9eadd4e4532cea49f827ec392
-    osx-arm64: 2472eaacbff2ebd06ebc75e87f4046a9c4c3c9f8bfbab57103b9ea8f200798d6
-    win-64: 11a1794d109f63abe4d7618cd633b29271d3947413f749a1300a92fccb259a63
+    linux-64: 9a997c92184a509d0939350819e2d09cc3126670eb44fd33fcad985143f90151
+    osx-arm64: e7cb621da30fd2a00dec031bb0343066d3ed8457562172f2fede01e6d1f56431
+    win-64: 16f721cba1c4f794672f33dec2fa62d942cb7970174dcc4986593a1680ed6fd6
   channels:
   - url: conda-forge
     used_env_vars: []
@@ -1548,19 +1548,6 @@ package:
     sha256: 177b2d2cd552dcb88c0ce74b14512e1a8cd44146645120529e19755eb493232e
   category: main
   optional: false
-- name: loguru
-  version: 0.7.2
-  manager: conda
-  platform: linux-64
-  dependencies:
-    python: '>=3.10,<3.11.0a0'
-    python_abi: 3.10.*
-  url: https://conda.anaconda.org/conda-forge/linux-64/loguru-0.7.2-py310hff52083_1.conda
-  hash:
-    md5: 157e6221a079a60c7f6f6fcb87c722aa
-    sha256: 35319fe904289949e78af080ac05907bb545ecad64bd2eaea95efb8526069ee5
-  category: main
-  optional: false
 - name: markupsafe
   version: 2.1.3
   manager: conda
@@ -1684,10 +1671,10 @@ package:
     libgcc-ng: '>=12'
     python: '>=3.10,<3.11.0a0'
     python_abi: 3.10.*
-  url: https://conda.anaconda.org/conda-forge/linux-64/orjson-3.9.7-py310h1e2579a_0.conda
+  url: https://conda.anaconda.org/conda-forge/linux-64/orjson-3.9.7-py310h1e2579a_1.conda
   hash:
-    md5: 555779b5623db011f921e63118023599
-    sha256: 21578901811cfca42b48bb4dd1096a65bb47bcec05407e02e480d285e8821ddd
+    md5: 83e06939ffb727522da96ce324a14197
+    sha256: 760da76a37c73054e1067f64bbaf784a686dedb2f80ae2a0d456a1c666bec8c6
   category: main
   optional: false
 - name: packaging
@@ -3737,10 +3724,10 @@ package:
     python_abi: 3.10.*
     scipy: ''
     threadpoolctl: '>=2.0.0'
-  url: https://conda.anaconda.org/conda-forge/linux-64/scikit-learn-1.3.1-py310h1fdf081_0.conda
+  url: https://conda.anaconda.org/conda-forge/linux-64/scikit-learn-1.3.1-py310h1fdf081_1.conda
   hash:
-    md5: a58f4b860be77cd95881acd945ecf15b
-    sha256: 30e6d5e87223e0718bf8c34d66200cba456f850d2d5399b702e32929330499c1
+    md5: efe9047fabed6b0698cf590f9d2a8a73
+    sha256: 66ff9cf35b5e8beba3afd0296f8ed6438e9e7ff50eaf452f2cbcb4b411b53226
   category: main
   optional: false
 - name: datasets
@@ -4028,6 +4015,16 @@ package:
     sha256: 168206b0c49063854a93b7546883c0327d4e6b4e147b6d2aa889db8c335a28bb
   category: main
   optional: false
+- name: argcomplete
+  version: 3.1.2
+  manager: pip
+  platform: linux-64
+  dependencies: {}
+  url: https://files.pythonhosted.org/packages/1e/05/223116a4a5905d6b26bff334ffc7b74474fafe23fcb10532caf0ef86ca69/argcomplete-3.1.2-py3-none-any.whl
+  hash:
+    sha256: d97c036d12a752d1079f190bc1521c545b941fda89ad85d15afa909b4d1b9a99
+  category: main
+  optional: false
 - name: better-exceptions
   version: 0.3.3
   manager: pip
@@ -4081,6 +4078,30 @@ package:
   url: https://files.pythonhosted.org/packages/4a/e9/ce8937fa8d97f764c7756cdaf46222c9efea92e6c4b8d6e0dae4cdfeefea/simple_parsing-0.1.4-py3-none-any.whl
   hash:
     sha256: 1fb042499d8872090ed3aad1f60f4d53026d2062942196a600933bc83787328e
+  category: main
+  optional: false
+- name: userpath
+  version: 1.9.1
+  manager: pip
+  platform: linux-64
+  dependencies:
+    click: '*'
+  url: https://files.pythonhosted.org/packages/a2/28/20c7dcdb12681b2e12224184a8a158e5df51feb0c68116cb4b1b991a4aab/userpath-1.9.1-py3-none-any.whl
+  hash:
+    sha256: e085053e5161f82558793c41d60375289efceb4b77d96033ea9c84fc0893f772
+  category: main
+  optional: false
+- name: pipx
+  version: 1.2.0
+  manager: pip
+  platform: linux-64
+  dependencies:
+    argcomplete: '>=1.9.4'
+    packaging: '>=20.0'
+    userpath: '>=1.6.0'
+  url: https://files.pythonhosted.org/packages/ee/a2/c219f3e5120c58bfd077340e32c5ac61545e0fb0020701e34a528035aa87/pipx-1.2.0-py3-none-any.whl
+  hash:
+    sha256: a94c4bca865cd6e85b37cd6717a22481744890fe36b70db081a78d1feb923ce0
   category: main
   optional: false
 - name: aws-c-common
@@ -4194,14 +4215,14 @@ package:
   category: main
   optional: false
 - name: llvm-openmp
-  version: 16.0.6
+  version: 17.0.2
   manager: conda
   platform: osx-arm64
   dependencies: {}
-  url: https://conda.anaconda.org/conda-forge/osx-arm64/llvm-openmp-16.0.6-h1c12783_0.conda
+  url: https://conda.anaconda.org/conda-forge/osx-arm64/llvm-openmp-17.0.2-h1c12783_0.conda
   hash:
-    md5: 52e5730888439f7f55fd4f83905581b4
-    sha256: f5cbb852853a7a931716d55e39515876f61fefd0cb4e055f286adc2dc3bc9d2a
+    md5: cc2d5e802daf2135a1eaa5983ee47827
+    sha256: 4bbe783de0fafa9e05b0af28c8afbfde5b9525acd65e8f387562c5e80f5ec4bd
   category: main
   optional: false
 - name: ncurses
@@ -5017,19 +5038,6 @@ package:
     sha256: b2c1b30d36f0412c0c0313db76a0236d736f3a9b887b8ed16182f531e4b7cb80
   category: main
   optional: false
-- name: loguru
-  version: 0.7.2
-  manager: conda
-  platform: osx-arm64
-  dependencies:
-    python: '>=3.10,<3.11.0a0'
-    python_abi: 3.10.*
-  url: https://conda.anaconda.org/conda-forge/osx-arm64/loguru-0.7.2-py310hbe9552e_1.conda
-  hash:
-    md5: 0a7e5f041adb23f7d4d80d8210774a29
-    sha256: cc7df7454f5be381d71dcc62aa80409cae58c509866e6bcff223e94fe465d21d
-  category: main
-  optional: false
 - name: markupsafe
   version: 2.1.3
   manager: conda
@@ -5179,10 +5187,10 @@ package:
   dependencies:
     python: '>=3.10,<3.11.0a0'
     python_abi: 3.10.*
-  url: https://conda.anaconda.org/conda-forge/osx-arm64/orjson-3.9.7-py310h3f0a850_0.conda
+  url: https://conda.anaconda.org/conda-forge/osx-arm64/orjson-3.9.7-py310h3f0a850_1.conda
   hash:
-    md5: c59a1247beb0d07712484d63f1ad7459
-    sha256: d8f6bdb2e834e74d38a3d5d0eab39cb5136bd813d542df4e9ddcb6ee2bbc51e8
+    md5: abb2a846c55f2ece5d935f4bf087d4cb
+    sha256: 82d2f52a86ac4acafeedccdd0e6b1a3443034b5e0e9fd32defc0bc86d8cce2b3
   category: main
   optional: false
 - name: packaging
@@ -7347,6 +7355,16 @@ package:
     sha256: a3140aff6c16e1e139d29b046c0d3df2a7ca9be38b253e4d6d48699b605e1824
   category: main
   optional: false
+- name: argcomplete
+  version: 3.1.2
+  manager: pip
+  platform: osx-arm64
+  dependencies: {}
+  url: https://files.pythonhosted.org/packages/1e/05/223116a4a5905d6b26bff334ffc7b74474fafe23fcb10532caf0ef86ca69/argcomplete-3.1.2-py3-none-any.whl
+  hash:
+    sha256: d97c036d12a752d1079f190bc1521c545b941fda89ad85d15afa909b4d1b9a99
+  category: main
+  optional: false
 - name: better-exceptions
   version: 0.3.3
   manager: pip
@@ -7400,6 +7418,30 @@ package:
   url: https://files.pythonhosted.org/packages/4a/e9/ce8937fa8d97f764c7756cdaf46222c9efea92e6c4b8d6e0dae4cdfeefea/simple_parsing-0.1.4-py3-none-any.whl
   hash:
     sha256: 1fb042499d8872090ed3aad1f60f4d53026d2062942196a600933bc83787328e
+  category: main
+  optional: false
+- name: userpath
+  version: 1.9.1
+  manager: pip
+  platform: osx-arm64
+  dependencies:
+    click: '*'
+  url: https://files.pythonhosted.org/packages/a2/28/20c7dcdb12681b2e12224184a8a158e5df51feb0c68116cb4b1b991a4aab/userpath-1.9.1-py3-none-any.whl
+  hash:
+    sha256: e085053e5161f82558793c41d60375289efceb4b77d96033ea9c84fc0893f772
+  category: main
+  optional: false
+- name: pipx
+  version: 1.2.0
+  manager: pip
+  platform: osx-arm64
+  dependencies:
+    argcomplete: '>=1.9.4'
+    packaging: '>=20.0'
+    userpath: '>=1.6.0'
+  url: https://files.pythonhosted.org/packages/ee/a2/c219f3e5120c58bfd077340e32c5ac61545e0fb0020701e34a528035aa87/pipx-1.2.0-py3-none-any.whl
+  hash:
+    sha256: a94c4bca865cd6e85b37cd6717a22481744890fe36b70db081a78d1feb923ce0
   category: main
   optional: false
 - name: ca-certificates
@@ -8992,10 +9034,10 @@ package:
   dependencies:
     python: '>=3.10,<3.11.0a0'
     python_abi: 3.10.*
-  url: https://conda.anaconda.org/conda-forge/win-64/orjson-3.9.7-py310h48ea969_0.conda
+  url: https://conda.anaconda.org/conda-forge/win-64/orjson-3.9.7-py310h48ea969_1.conda
   hash:
-    md5: 8349004e91a9b5733877aba7c278f798
-    sha256: 21a6c32c94fe485474ca43bc19cf830837dea46fca637a08a435cedbcffadaf1
+    md5: a93f40edbff0a4de7bf06121454a1c09
+    sha256: bb4ce7e488288fa8842f1a191bf2d396477293238ebd9f5f35a4ddaca94a1bd5
   category: main
   optional: false
 - name: packaging
@@ -9557,18 +9599,6 @@ package:
     sha256: 21bcec5373b04d739ab65252b5532b04a08d229865ebb24b5b94902d6d0a77b0
   category: main
   optional: false
-- name: win32_setctime
-  version: 1.1.0
-  manager: conda
-  platform: win-64
-  dependencies:
-    python: '>=3.5'
-  url: https://conda.anaconda.org/conda-forge/noarch/win32_setctime-1.1.0-pyhd8ed1ab_0.tar.bz2
-  hash:
-    md5: dc80c0c2b01f7d6d6d5df4b63ef54f17
-    sha256: b2c4dfa3dcf888b9449a4a2fd480b2db4e9167838d91df15fe745f9ba7adff95
-  category: main
-  optional: false
 - name: win_inet_pton
   version: 1.1.0
   manager: conda
@@ -9926,21 +9956,6 @@ package:
   hash:
     md5: c71f7ec8b80a536e58b979299b230251
     sha256: 9c866f31ff7a02cc70b306f65b1a81eabf84826b0d32c1f51e0ece17cfcdaf79
-  category: main
-  optional: false
-- name: loguru
-  version: 0.7.2
-  manager: conda
-  platform: win-64
-  dependencies:
-    colorama: '>=0.3.4'
-    python: '>=3.10,<3.11.0a0'
-    python_abi: 3.10.*
-    win32_setctime: '>=1.0.0'
-  url: https://conda.anaconda.org/conda-forge/win-64/loguru-0.7.2-py310h5588dad_1.conda
-  hash:
-    md5: 2b73ddd2ad9984b09aafccabd8d0fac2
-    sha256: f3db7a198439b1d6f3943a4dba416e06406e6090fa6afe4b0d06441c3d5a2923
   category: main
   optional: false
 - name: markdown-it-py
@@ -11202,10 +11217,10 @@ package:
     ucrt: '>=10.0.20348.0'
     vc: '>=14.2,<15'
     vc14_runtime: '>=14.29.30139'
-  url: https://conda.anaconda.org/conda-forge/win-64/scikit-learn-1.3.1-py310hfd2573f_0.conda
+  url: https://conda.anaconda.org/conda-forge/win-64/scikit-learn-1.3.1-py310hfd2573f_1.conda
   hash:
-    md5: 18525b819128735952e047945db7ace5
-    sha256: 8c0154f56656ae42bb09422bcac7fcad142e12de9ff691ea7df6505313d44521
+    md5: 1ea9602317f62e5fc1d38534a5f422de
+    sha256: db49fadc639fb43f56faad12528df7921f34034aa7de258279686627dab5bf58
   category: main
   optional: false
 - name: datasets
@@ -11478,6 +11493,16 @@ package:
     sha256: 168206b0c49063854a93b7546883c0327d4e6b4e147b6d2aa889db8c335a28bb
   category: main
   optional: false
+- name: argcomplete
+  version: 3.1.2
+  manager: pip
+  platform: win-64
+  dependencies: {}
+  url: https://files.pythonhosted.org/packages/1e/05/223116a4a5905d6b26bff334ffc7b74474fafe23fcb10532caf0ef86ca69/argcomplete-3.1.2-py3-none-any.whl
+  hash:
+    sha256: d97c036d12a752d1079f190bc1521c545b941fda89ad85d15afa909b4d1b9a99
+  category: main
+  optional: false
 - name: docstring-parser
   version: '0.15'
   manager: pip
@@ -11519,6 +11544,31 @@ package:
   url: https://files.pythonhosted.org/packages/4a/e9/ce8937fa8d97f764c7756cdaf46222c9efea92e6c4b8d6e0dae4cdfeefea/simple_parsing-0.1.4-py3-none-any.whl
   hash:
     sha256: 1fb042499d8872090ed3aad1f60f4d53026d2062942196a600933bc83787328e
+  category: main
+  optional: false
+- name: userpath
+  version: 1.9.1
+  manager: pip
+  platform: win-64
+  dependencies:
+    click: '*'
+  url: https://files.pythonhosted.org/packages/a2/28/20c7dcdb12681b2e12224184a8a158e5df51feb0c68116cb4b1b991a4aab/userpath-1.9.1-py3-none-any.whl
+  hash:
+    sha256: e085053e5161f82558793c41d60375289efceb4b77d96033ea9c84fc0893f772
+  category: main
+  optional: false
+- name: pipx
+  version: 1.2.0
+  manager: pip
+  platform: win-64
+  dependencies:
+    argcomplete: '>=1.9.4'
+    colorama: '>=0.4.4'
+    packaging: '>=20.0'
+    userpath: '>=1.6.0'
+  url: https://files.pythonhosted.org/packages/ee/a2/c219f3e5120c58bfd077340e32c5ac61545e0fb0020701e34a528035aa87/pipx-1.2.0-py3-none-any.whl
+  hash:
+    sha256: a94c4bca865cd6e85b37cd6717a22481744890fe36b70db081a78d1feb923ce0
   category: main
   optional: false
 - name: print-on-steroids

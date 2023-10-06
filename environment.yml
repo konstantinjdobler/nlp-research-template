@@ -27,16 +27,13 @@ dependencies:
   - numpy
   - scipy
   - pandas
-  - scikit-learn
   - seqeval
+  # - scikit-learn # scikit-learn makes problems fo osx-arm64 - we don't need it anyways
 
   # Misc
   - jsonlines
   - zstandard
   - debugpy
-
-  # Logging, argparsing, etc.
-  - loguru
   - tqdm
 
   # Dev dependencies
@@ -46,6 +43,7 @@ dependencies:
   # pip dependencies
   - pip
   - pip:
+      - pipx
       - warmup-scheduler
       - simple_parsing
       - print-on-steroids[exceptions]
