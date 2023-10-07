@@ -39,7 +39,8 @@
 	// ],
 	"mounts": [
 		"source=${localEnv:HOME}/.netrc,target=/home/mamba/.netrc,type=bind", // this is to get WANDB_API_KEY from .netrc
-		"source=${localEnv:HOME}/.cache,target=/home/mamba/.cache,type=bind",
+		"source=${localEnv:HOME}/.gitconfig,target=/home/mamba/.gitconfig,type=bind", // this is to get git credentials
+		"source=${localEnv:HOME}/.cache,target=/home/mamba/.cache,type=bind", // general cache directory
 	],
 	"remoteEnv": {
 		"WANDB_API_KEY": "${localEnv:WANDB_API_KEY}",
