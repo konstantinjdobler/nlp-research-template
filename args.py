@@ -55,9 +55,6 @@ class TrainingArgs:
     save_interval: int | float = field(default=0.1)
     "Interval between model checkpoints. If < 1, use as percentage of training_goal."
 
-    log_interval: float = field(default=-1)
-    "Interval between log prints. If < 1, use as percentage of training_goal. If -1, print log after every batch."
-
     warmup_period: float = field(default=0.005)
     "Length of lr warmup. If < 1, use as percentage of training_goal."
 
@@ -162,8 +159,6 @@ class TrainingArgs:
             self.eval_interval = int(self.eval_interval * self.training_goal)
         if self.save_interval < 1:
             self.save_interval = int(self.save_interval * self.training_goal)
-        if self.log_interval < 1 and self.log_interval != -1:
-            self.log_interval = int(self.log_interval * self.training_goal)
         if self.warmup_period < 1:
             self.warmup_period = int(self.warmup_period * self.training_goal)
         if self.lr_decay_period == -1:
@@ -200,10 +195,6 @@ class TrainingArgs:
         self.training_goal = int(self.training_goal / UNITS_PER_STEP)
         self.eval_interval = int(self.eval_interval / UNITS_PER_STEP)
         self.save_interval = int(self.save_interval / UNITS_PER_STEP)
-        if self.log_interval == -1:
-            self.log_interval = 1
-        else:
-            self.log_interval = int(self.log_interval / UNITS_PER_STEP)
         self.warmup_period = int(self.warmup_period / UNITS_PER_STEP)
         self.lr_decay_period = int(self.lr_decay_period / UNITS_PER_STEP)
 
