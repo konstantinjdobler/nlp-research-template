@@ -82,9 +82,10 @@ fi
 # NOTE: --ipc=host for full RAM and CPU access or -m XXXG --cpus XX to control access to RAM and cpus
 # You probably want to add addiitonal mounts to your homefolder, e.g. -v /home/username/data:/home/username/data
 # IMPORTANT: Use -v /home/username/.cache:/home/mamba/.cache to mount your cache folder to the docker container. The username inside the container is "mamba".
+# Other common mounts:  -v /scratch/username/:/scratch/username/ -v /home/username/data/:/home/username/data/
 # Add -p 5678:5678 to expose port 5678 for remote debugging. But keep in mind that this will block the port for other docker users on the server, so you might have to choose a different one.
 docker run --rm -it --ipc=host \
-    -v "$(pwd)":/workspace -v /scratch/:/scratch/ -w /workspace \
+    -v "$(pwd)":/workspace -w /workspace \
     --user $(id -u):$(id -g) \
     --env XDG_CACHE_HOME --env HF_DATASETS_CACHE --env WANDB_CACHE_DIR --env WANDB_DATA_DIR --env WANDB_API_KEY \
     --gpus=\"device=${gpus}\" $image $command
