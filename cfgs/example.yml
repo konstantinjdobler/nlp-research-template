@@ -1,0 +1,16 @@
+base_unit: tokens
+training_goal: 1_000_000_000
+eval_interval: 0.05
+save_interval: 0.25
+warmup_period: 0.005
+block_size: 512
+batch_size: 512
+weight_decay: 0.1
+learning_rate: 2e-4
+grad_clip: 1.0
+hf_model_name: roberta-base
+precision: bf16-mixed
+wandb_tags: ["research-template"]
+data_dir: "./data/mock"
+train_file: "train.txt"
+val_file: "val.txt"

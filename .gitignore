@@ -1,5 +1,7 @@
-data/**/*
-
+data/*
+!data/mock/
+data/mock/tokenized/*
+logs/
 # experiment output logs
 wandb/
 artifacts/
@@ -136,8 +138,5 @@ dmypy.json
 # Pyre type checker
 .pyre/
 
-# data for testing
-/data
-
-# everything that has to do with run-results 
+# everything that has to do with run-results
 /template

@@ -1,0 +1,16 @@
+# Beware, this will download the 7 billion parameter Llama2 model (~27GB)
+base_unit: tokens
+training_goal: 2_000_000_000_000
+eval_interval: 0.05
+save_interval: 0.25
+warmup_period: 0.005
+block_size: 2048
+hf_model_name: meta-llama/Llama-2-7b-hf
+from_scratch: true
+precision: bf16-mixed
+language_modeling_objective: clm
+beta1: 0.9
+beta2: 0.95
+learning_rate: 1.5e-4
+grad_clip: 1.0
+run_name: my-llama

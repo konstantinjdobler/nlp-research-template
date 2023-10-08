@@ -1,0 +1,10 @@
+torch
+lightning
+transformers
+datasets
+numpy
+tqdm
+wandb
+simple_parsing
+jsonlines
+print_on_steroids[exceptions]

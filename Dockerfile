@@ -2,8 +2,8 @@
 
 # This Dockerfile produces a container with all dependencies installed into an environment called "research"
 # Additionally, the container has a full-fledged micromamba installation, which is a faster drop-in replacement for conda
-# When inside the container, you can install additional dependencies with `conda install <package>`, e.g. `conda install scipy`
-# The actual installation is done by micromamba, we have simply provided an alias to link the conda command to micromamba
+# When inside the container, you can install additional dependencies with `mamba install <package>`, e.g. `mamba install scipy`
+# The actual installation is done by micromamba, we have simply provided an alias to link the mamba command to micromamba
 
 # The syntax line above is crucial to enable variable expansion for type=cache=mount commands
 
@@ -23,7 +23,7 @@ FROM --platform=$TARGETPLATFORM mambaorg/micromamba:1.4.2 as micromamba
 # -----------------
 FROM --platform=linux/amd64 nvidia/cuda:11.8.0-cudnn8-runtime-ubi8 as amd64ubi8
 # Install compiler for .compile() with PyTorch 2.0 and nano for devcontainers
-RUN yum install -y gcc gcc-c++ nano && yum clean all
+RUN yum install -y git gcc gcc-c++ nano && yum clean all
 # Copy lockfile to container
 COPY conda-lock.yml /locks/conda-lock.yml
 
@@ -35,7 +35,7 @@ COPY conda-lock.yml /locks/conda-lock.yml
 # -----------------
 FROM --platform=linux/amd64 nvidia/cuda:11.8.0-cudnn8-runtime-ubuntu22.04 as amd64ubuntu
 # Install compiler for .compile() with PyTorch 2.0 and nano for devcontainers
-RUN apt-get update && apt-get install -y gcc g++ nano openssh-client && apt-get clean
+RUN apt-get update && apt-get install -y git gcc g++ nano openssh-client && apt-get clean
 # Copy lockfile to container
 COPY conda-lock.yml /locks/conda-lock.yml
 
@@ -111,8 +111,8 @@ RUN chown $MAMBA_USER:$MAMBA_USER /usr/bin/gcc
 # Necessary to prevent permission error when micromamba tries to install pip dependencies from lockfile
 RUN chown $MAMBA_USER:$MAMBA_USER /locks/
 RUN chown $MAMBA_USER:$MAMBA_USER /locks/conda-lock.yml
-# Provide conda alias for micromamba
-RUN echo "alias conda=micromamba" >> /usr/local/bin/_activate_current_env.sh
+# Provide mamba alias for micromamba
+RUN echo "alias mamba=micromamba" >> /usr/local/bin/_activate_current_env.sh
 
 # Give permission to everyone for e.g. caching
 RUN mkdir /home/mamba/.cache && chmod -R 777 /home/mamba/.cache/

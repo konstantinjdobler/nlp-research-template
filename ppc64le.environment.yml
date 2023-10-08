@@ -8,26 +8,40 @@ dependencies:
   - pytorch=2.0.1 # OpenCE version 1.9
   # CUDA only for Linux (on compute server machine)
   - cudatoolkit=11.8 # OpenCE version 1.9
-  - dargparser
   - wandb
   - lightning
   - transformers
   - tokenizers
   - datasets
-  - loguru
+  - evaluate
+  - accelerate
+  - sentencepiece
+
+  # Good to have
+  - numpy
+  - scipy
+  - pandas
+  - scikit-learn
+  - seqeval
+
+  # Misc
+  - jsonlines
+  - zstandard
+  - debugpy
   - tqdm
 
   # Dev dependencies
   - black
-  - isort
-  - flake8
+  - ruff
 
-  # Pip dependencies
+  # pip dependencies
   - pip
   - pip:
+      - pipx
       - warmup-scheduler
+      - simple_parsing
+      - print-on-steroids[exceptions]
 
 # Non-standard section listing target platforms for conda-lock:
 platforms:
   - linux-ppc64le
-

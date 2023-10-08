@@ -8,28 +8,45 @@ channels:
   - nodefaults
 dependencies:
   - python=3.10 # or don't specify the version and use latest stable
+
+  # ML libraries
   - pytorch::pytorch>=2.0 # or don't specify the version and use latest stable
   # CUDA only on linux and windows
   - pytorch::pytorch-cuda=11.8 # [linux]
   - pytorch::pytorch-cuda=11.8 # [win]
-  - dargparser
   - wandb
   - lightning
   - transformers
   - tokenizers
   - datasets
-  - loguru
+  - evaluate
+  - accelerate
+  - sentencepiece
+
+  # Good to have
+  - numpy
+  - scipy
+  - pandas
+  - seqeval
+  # - scikit-learn # scikit-learn makes problems fo osx-arm64 - we don't need it anyways
+
+  # Misc
+  - jsonlines
+  - zstandard
+  - debugpy
   - tqdm
 
   # Dev dependencies
   - black
-  - isort
-  - flake8
+  - ruff
 
   # pip dependencies
   - pip
   - pip:
+      - pipx
       - warmup-scheduler
+      - simple_parsing
+      - print-on-steroids[exceptions]
 
 # Non-standard section listing target platforms for conda-lock:
 platforms:
