@@ -14,7 +14,7 @@ image="konstantinjdobler/nlp-research-template:latest"
 command="bash"
 gpus="none"
 
-set e
+set -e
 
 # Check if the current directory is named "scripts"
 current_directory=$(basename "$PWD")
