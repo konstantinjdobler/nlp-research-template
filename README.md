@@ -216,6 +216,8 @@ After having installed the [Remote-SSH-](https://code.visualstudio.com/docs/remo
 There is a bit of setup: for a proper dev environment, you will need to configure mounts (cache directories, your datasets, ...) and environment variables like for a regular docker run command, have a look inside [`.devcontainer/devcontainer.json`](.devcontainer/devcontainer.json).
 `conda-lock` is automatically installed for you but you have to add the `--micromamba` flag inside the Dev Container (e.g. `conda-lock --micromamba -f environment.yml`).
 
+We automatically mount the `~/.gitconfig` and `~/.netrc` files for ease of use of Git and W&B, however these files have to exist on your host machine. They are created when executing `git config --global user.email your.name@domain.com` and `wandb login`, respectively.
+
 If you want to use GPUs for development, you also need to specify the GPU you want to use in [`.devcontainer/devcontainer.json`](.devcontainer/devcontainer.json). However, this is a bit cumbersome if you are often switching between GPUs. Alternatively, you edit your code in the Dev Container (without a GPU) but start all actual development runs of your script like you would for training with `run-in-docker.sh` and select the GPU ad-hoc. The nice advantage of Dev Containers is that you are still using the exact same docker container for both.
 
 </p>
