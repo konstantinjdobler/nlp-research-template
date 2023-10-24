@@ -44,7 +44,6 @@ dependencies:
   - pip
   - pip:
       - pipx
-      - warmup-scheduler
       - simple_parsing
       - print-on-steroids[exceptions]
 
