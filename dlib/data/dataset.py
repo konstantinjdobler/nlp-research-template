@@ -149,8 +149,8 @@ class VeryCoolDataset(TorchDataset):
         unk_token: int = 0,
         bos_token: int = 1,
         eos_token: int = 2,
-        pad_token: int = -1,  # by default, chunked_cross_entropy ignores -1. llama2 does not have pad token in vocab
-        ignore_index: int = -1,  # for cross entropy loss
+        pad_token: int = -100,  # by default, chunked_cross_entropy ignores -100. llama2 does not have pad token in vocab
+        ignore_index: int = -100,  # for cross entropy loss
         mask_bos_loss: bool = False,
         shuffle: bool = True,
         data_dtype: np.dtype = np.uint16,  # supports vocab size up to 65k
@@ -262,7 +262,7 @@ class VeryCoolDataset(TorchDataset):
             doc_len = next_doc_data_idx - doc_data_idx
             if doc_len < self.block_size:
                 # padding - overwrite the remainder that was part of the next sample
-                # put at least 0 because some models don't have pad token, in which case we use -1 for targets
+                # put at least 0 because some models don't have pad token, in which case we use ignore_index for targets
                 # inputs get ignored anyway
                 x[doc_len:] = max(self.pad_token, 0)
                 # for y, it's shifted one to the right, so next sample starts one token earlier
