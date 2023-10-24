@@ -11,7 +11,7 @@
 ARG OS_SELECTOR=ubi8
 
 # Load micromamba container to copy from later
-FROM --platform=$TARGETPLATFORM mambaorg/micromamba:1.4.2 as micromamba
+FROM --platform=$TARGETPLATFORM mambaorg/micromamba:1.5.1 as micromamba
 
 
 ####################################################
@@ -49,30 +49,24 @@ RUN yum install -y gcc gcc-c++ && yum clean all
 COPY ppc64le.conda-lock.yml /locks/conda-lock.yml
 
 
-
-####################################################
-################ FINAL IMAGE #######################
-####################################################
-
+###########################################################
+################ Intermediate IMAGE #######################
+###########################################################
 # -----------------
-# Final build image - we choose the correct base image based on the target architecture and OS
+# build image - we choose the correct base image based on the target architecture and OS
 # -----------------
 ARG TARGETARCH
-FROM ${TARGETARCH}${OS_SELECTOR} as final
+FROM ${TARGETARCH}${OS_SELECTOR} as nvidia-cuda-with-micromamba
 # From https://github.com/mamba-org/micromamba-docker#adding-micromamba-to-an-existing-docker-image
 # The commands below add micromamba to an existing image to give the capability to ad-hoc install new dependencies
-
-####################################################
-######### Adding micromamba starts here ############
-####################################################
 USER root
 
 # if your image defaults to a non-root user, then you may want to make the
 # next 3 ARG commands match the values in your image. You can get the values
 # by running: docker run --rm -it my/image id -a
-ARG MAMBA_USER=mamba
-ARG MAMBA_USER_ID=1000
-ARG MAMBA_USER_GID=1000
+ARG MAMBA_USER=mambauser
+ARG MAMBA_USER_ID=57439
+ARG MAMBA_USER_GID=57439
 ENV MAMBA_USER=$MAMBA_USER
 ENV MAMBA_ROOT_PREFIX="/opt/conda"
 ENV MAMBA_EXE="/bin/micromamba"
@@ -100,31 +94,24 @@ ENTRYPOINT ["/usr/local/bin/_entrypoint.sh"]
 # You can modify the CMD statement as needed....
 CMD ["/bin/bash"]
 
-####################################################
-######### Adding micromamba stops here #############
-####################################################
 
-# Switch to root user to grant necessary permissions
-USER root
-# Give user permission to gcc
-RUN chown $MAMBA_USER:$MAMBA_USER /usr/bin/gcc
+############################################################
+######### Install dependcies in seperate image #############
+############################################################
+FROM nvidia-cuda-with-micromamba as installed-dependencies
+
 # Necessary to prevent permission error when micromamba tries to install pip dependencies from lockfile
+USER root
 RUN chown $MAMBA_USER:$MAMBA_USER /locks/
 RUN chown $MAMBA_USER:$MAMBA_USER /locks/conda-lock.yml
-# Provide mamba alias for micromamba
-RUN echo "alias mamba=micromamba" >> /usr/local/bin/_activate_current_env.sh
-
-# Give permission to everyone for e.g. caching
-RUN mkdir /home/mamba/.cache && chmod -R 777 /home/mamba/.cache/
-
-# Switch back to micromamba user
 USER $MAMBA_USER
+
 ARG TARGETPLATFORM
 # Use line below to debug if cache is correctly mounted
 # RUN --mount=type=cache,target=$MAMBA_ROOT_PREFIX/pkgs,id=conda-$TARGETPLATFORM,uid=$MAMBA_USER_ID,gid=$MAMBA_USER_GID ls -al /opt/conda/pkgs
 # Install dependencies from lockfile into environment, cache packages in /opt/conda/pkgs
 RUN --mount=type=cache,target=$MAMBA_ROOT_PREFIX/pkgs,id=conda-$TARGETPLATFORM,uid=$MAMBA_USER_ID,gid=$MAMBA_USER_GID \
-    micromamba create --name research --yes --file /locks/conda-lock.yml
+    micromamba install --name base --yes --file /locks/conda-lock.yml 
 
 # Set conda-forge as default channel (otherwise no default channel is set)
 ARG MAMBA_DOCKERFILE_ACTIVATE=1
@@ -135,5 +122,28 @@ RUN micromamba config set show_banner false --env
 # Install optional tricky pip dependencies that do not work with conda-lock
 # RUN micromamba run -n research pip install example-dependency --no-deps --no-cache-dir
 
-# Use our environment `research` as default
-ENV ENV_NAME=research
+
+###############################################
+############# FINAL IMAGE #####################
+###### For smaller resulting image size #######
+###############################################
+FROM nvidia-cuda-with-micromamba as final
+
+# Get ONLY the micromamba environment from the previous image, chmod 777 s.t. any user can use micromamba
+COPY --from=installed-dependencies --chmod=777 /opt/conda /opt/conda
+
+# Grant some useful permissions
+USER root
+# Give user permission to gcc
+RUN chown $MAMBA_USER:$MAMBA_USER /usr/bin/gcc
+# Provide mamba alias for micromamba
+RUN echo "alias mamba=micromamba" >> /usr/local/bin/_activate_current_env.sh
+# Give permission to everyone for e.g. caching
+RUN mkdir /home/${MAMBA_USER}/.cache && chmod -R 777 /home/${MAMBA_USER}/.cache/
+USER $MAMBA_USER
+
+# Set conda-forge as default channel (otherwise no default channel is set)
+ARG MAMBA_DOCKERFILE_ACTIVATE=1
+RUN micromamba config prepend channels conda-forge --env
+# Disable micromamba banner at every command
+RUN micromamba config set show_banner false --env
