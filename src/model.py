@@ -1,14 +1,12 @@
 from typing import Literal
 
 import lightning as L
-import torch
 from print_on_steroids import logger
 from torch.optim import AdamW
 from transformers.modeling_utils import PreTrainedModel
 from transformers.models.auto.configuration_auto import AutoConfig
 from transformers.models.auto.modeling_auto import AutoModelForCausalLM, AutoModelForMaskedLM
 from transformers.optimization import get_scheduler
-from warmup_scheduler import GradualWarmupScheduler
 
 
 class BasicLM(L.LightningModule):
@@ -96,29 +94,17 @@ class BasicLM(L.LightningModule):
             eps=self.epsilon,  # You can also tune this
         )
 
-        if self.lr_schedule == "reduce_on_plateau":
-            scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, patience=5, verbose=True)
-            if self.warmup_period > 0:  # Wrap ReduceLROnPlateau to enable LR warmup
-                scheduler = GradualWarmupScheduler(
-                    optimizer,
-                    multiplier=1,
-                    total_epoch=self.warmup_period,
-                    after_scheduler=scheduler,
-                )
-            scheduler_config = {"frequency": self.eval_interval, "monitor": "train/loss"}
-        else:
-            scheduler_name = self.lr_schedule
-            if scheduler_name == "constant" and self.warmup_period > 0:
-                scheduler_name += "_with_warmup"
-            scheduler = get_scheduler(
-                scheduler_name,
-                optimizer,
-                num_warmup_steps=int(self.warmup_period),
-                num_training_steps=self.trainer.max_steps,
-            )
-            scheduler_config = {"frequency": 1}
+        scheduler_name = self.lr_schedule
+        if scheduler_name == "constant" and self.warmup_period > 0:
+            scheduler_name += "_with_warmup"
+        scheduler = get_scheduler(
+            scheduler_name,
+            optimizer,
+            num_warmup_steps=int(self.warmup_period),
+            num_training_steps=self.trainer.max_steps,
+        )
 
         return {
             "optimizer": optimizer,
-            "lr_scheduler": {"scheduler": scheduler, "interval": "step", **scheduler_config},
+            "lr_scheduler": {"scheduler": scheduler, "interval": "step", "frequency": 1},
         }

@@ -75,9 +75,7 @@ class TrainingArgs:
     grad_clip: float = field(default=1.0)
     "If -1, disable."
 
-    lr_schedule: Literal["cosine", "linear", "reduce_on_plateau", "constant", "cosine_with_restarts", "polynomial"] = field(
-        default="cosine"
-    )
+    lr_schedule: Literal["cosine", "linear", "constant", "cosine_with_restarts", "polynomial"] = field(default="cosine")
 
     #######################################
     ## Hardware acceleration & precision ##
