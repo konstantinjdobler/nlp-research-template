@@ -113,12 +113,6 @@ ARG TARGETPLATFORM
 RUN --mount=type=cache,target=$MAMBA_ROOT_PREFIX/pkgs,id=conda-$TARGETPLATFORM,uid=$MAMBA_USER_ID,gid=$MAMBA_USER_GID \
     micromamba install --name base --yes --file /locks/conda-lock.yml 
 
-# Set conda-forge as default channel (otherwise no default channel is set)
-ARG MAMBA_DOCKERFILE_ACTIVATE=1
-RUN micromamba config prepend channels conda-forge --env
-# Disable micromamba banner at every command
-RUN micromamba config set show_banner false --env
-
 # Install optional tricky pip dependencies that do not work with conda-lock
 # RUN micromamba run -n research pip install example-dependency --no-deps --no-cache-dir
 
@@ -131,6 +125,7 @@ FROM nvidia-cuda-with-micromamba as final
 
 # Get ONLY the micromamba environment from the previous image, chmod 777 s.t. any user can use micromamba
 COPY --from=installed-dependencies --chmod=777 /opt/conda /opt/conda
+COPY --from=installed-dependencies --chmod=777 /locks/conda-lock.yml  /locks/conda-lock.yml
 
 # Grant some useful permissions
 USER root
