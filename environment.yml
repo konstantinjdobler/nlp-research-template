@@ -28,7 +28,7 @@ dependencies:
   - scipy
   - pandas
   - seqeval
-  # - scikit-learn # scikit-learn makes problems fo osx-arm64 - we don't need it anyways
+  - scikit-learn 
 
   # Misc
   - jsonlines
@@ -51,6 +51,6 @@ dependencies:
 # Non-standard section listing target platforms for conda-lock:
 platforms:
   - linux-64
-  - osx-arm64 # This is for M1/M2 MacBooks
+  # - osx-arm64 # This is for M1/M2 MacBooks # Currently bugged, wait for mamba 1.5.3 release
   # - linux-aarch64 # This is linux-arm64. We can build Docker images for M1/M2 Macs on top of this - won't support MPS though
   - win-64
