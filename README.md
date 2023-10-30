@@ -214,7 +214,9 @@ After having installed the [Remote-SSH-](https://code.visualstudio.com/docs/remo
 4. Press <code>Reopen in Container</code> and wait for VS Code to set everything up. for the first time or when you change `devcontainer.json`, you will need to do <code>Rebuild and reopen in Container</code>.
 
 There is a bit of setup: for a proper dev environment, you will need to configure mounts (cache directories, your datasets, ...) and environment variables like for a regular docker run command, have a look inside [`.devcontainer/devcontainer.json`](.devcontainer/devcontainer.json).
-`conda-lock` is automatically installed for you but you have to add the `--micromamba` flag inside the Dev Container (e.g. `conda-lock --micromamba -f environment.yml`).
+
+
+`conda-lock` is automatically installed for you but you have to add the `--micromamba` flag inside the Dev Container (e.g. `conda-lock --micromamba -f environment.yml`). Otherwise, conda-lock uses an anaconda installation, which takes over 8 hours to resolve the packages in the environments.
 
 We automatically mount the `~/.gitconfig` and `~/.netrc` files for ease of use of Git and W&B, however these files have to exist on your host machine. They are created when executing `git config --global user.email your.name@domain.com` and `wandb login`, respectively.
 
