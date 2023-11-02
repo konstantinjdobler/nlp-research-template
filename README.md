@@ -232,3 +232,31 @@ Sometimes it's just quicker or unavoidable to create an environment via `conda-l
 ### Code style
 
 We use the `ruff` linter and `black` formatter. You should install their VS Code extensions and enable "Format on Save" inside VS Code.
+
+
+## Continuous Integration and Deployment
+
+Our project uses GitHub Actions for CI/CD to automate the building and pushing of our Docker images to Docker Hub. This ensures that our Docker images are always up-to-date with the latest dependencies specified in `conda-lock.yml`.
+
+### Prerequisites for CI/CD
+
+To work with this CI/CD setup, you need to:
+
+- Set the following secrets in your GitHub repository:
+  - `DOCKER_REGISTRY`: The Docker registry URL (if using Docker Hub, this is not needed).
+  - `DOCKER_REGISTRY_USERNAME`: Your Docker Hub username.
+  - `DOCKER_REGISTRY_TOKEN`: Your Docker Hub access token or password.
+  - `DOCKER_REPOSITORY`: The repository name on Docker Hub where the image will be pushed.
+
+### How to Update Docker Images
+
+To update the Docker image:
+
+1. Make necessary changes to the `Dockerfile` or update dependencies in the `environment.yml`.
+2. Generate a new `conda-lock.yml` by running `conda-lock -f environment.yml`.
+3. Commit and push the changes to the `main` branch.
+4. The GitHub Actions workflow will automatically build and push the new Docker image to Docker Hub.
+
+### Docker Tags
+
+The Docker images are tagged with the PyTorch and CUDA versions extracted from `conda-lock.yml`, as well as a `latest` tag for the most recent build. Use the specific tags if you need a particular version of PyTorch or CUDA, or use the `latest` tag for the most recent build.
