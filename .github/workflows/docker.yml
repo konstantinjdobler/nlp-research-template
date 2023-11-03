@@ -47,5 +47,5 @@ jobs:
           context: .
           platforms: linux/amd64
           push: true
-          tags: ${{secrets.DOCKER_REPOSITORY}}:pytorch-${{env.TORCH_VERSION_AMD}}-cuda-${{env.CUDA_VERSION_AMD}}, ${{secrets.DOCKER_REPOSITORY}}:latest
+          tags: konstantinjdobler/nlp-research-template:pytorch${{env.TORCH_VERSION_AMD}}-cuda${{env.CUDA_VERSION_AMD}}, konstantinjdobler/nlp-research-template:latest
           
