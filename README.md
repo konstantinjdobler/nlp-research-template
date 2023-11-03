@@ -246,7 +246,6 @@ To work with this CI/CD setup, you need to:
   - `DOCKER_REGISTRY`: The Docker registry URL (if using Docker Hub, this is not needed).
   - `DOCKER_REGISTRY_USERNAME`: Your Docker Hub username.
   - `DOCKER_REGISTRY_TOKEN`: Your Docker Hub access token or password.
-  - `DOCKER_REPOSITORY`: The repository name on Docker Hub where the image will be pushed.
 
 ### How to Update Docker Images
 
