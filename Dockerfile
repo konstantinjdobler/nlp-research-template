@@ -114,6 +114,7 @@ RUN --mount=type=cache,target=$MAMBA_ROOT_PREFIX/pkgs,id=conda-$TARGETPLATFORM,u
     micromamba install --name base --yes --file /locks/conda-lock.yml 
 
 # Install optional tricky pip dependencies that do not work with conda-lock
+# --no-deps --no-cache-dir to prevent conflicts with micromamba, might have to remove it depending on your use case
 # RUN micromamba run -n research pip install example-dependency --no-deps --no-cache-dir
 
 
