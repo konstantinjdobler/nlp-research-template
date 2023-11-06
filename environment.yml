@@ -14,6 +14,7 @@ dependencies:
   # CUDA only on linux and windows
   - pytorch::pytorch-cuda=11.8 # [linux]
   - pytorch::pytorch-cuda=11.8 # [win]
+  
   - wandb
   - lightning
   - transformers
