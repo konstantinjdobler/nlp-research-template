@@ -50,6 +50,6 @@ dependencies:
 # Non-standard section listing target platforms for conda-lock:
 platforms:
   - linux-64
-  # - osx-arm64 # This is for M1/M2 MacBooks # Currently bugged, wait for mamba 1.5.3 release
+  - osx-arm64 # This is for M1/M2 MacBooks # Note: needs mamba 1.5.3 to work properly
   # - linux-aarch64 # This is linux-arm64. We can build Docker images for M1/M2 Macs on top of this - won't support MPS though
   - win-64
