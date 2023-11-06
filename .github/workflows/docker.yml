@@ -31,8 +31,8 @@ jobs:
       - name: Login to Docker Hub
         uses: docker/login-action@v2
         with:
-          registry: ${{secrets.DOCKER_REGISTRY}}
-          username: ${{secrets.DOCKER_REGISTRY_USERNAME}}
+          registry: ${{secrets.DOCKER_REGISTRY}} # if not set, default to Docker Hub
+          username: konstantinjdobler # change this
           password: ${{secrets.DOCKER_REGISTRY_TOKEN}}
       - name: Get torch version for amd
         run: "echo TORCH_VERSION_AMD=$(cat conda-lock.yml | grep -E -A 4 'name: pytorch$' |
@@ -46,5 +46,6 @@ jobs:
           context: .
           platforms: linux/amd64
           push: true
+          # change these tags to match your Docker Hub repo
           tags: konstantinjdobler/nlp-research-template:pytorch${{env.TORCH_VERSION_AMD}}-cuda${{env.CUDA_VERSION_AMD}}, konstantinjdobler/nlp-research-template:latest
           
