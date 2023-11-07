@@ -35,11 +35,13 @@ jobs:
           username: konstantinjdobler # change this
           password: ${{secrets.DOCKER_REGISTRY_TOKEN}}
       - name: Get torch version for amd
-        run: "echo TORCH_VERSION_AMD=$(cat conda-lock.yml | grep -E -A 4 'name: pytorch$' |
-          tail -n1 | grep -Eo [0-9]+.[0-9]+.[0-9]+) >> $GITHUB_ENV"
+        run: "echo TORCH_VERSION_AMD=$(.github/scripts/release.py pytorch) >> $GITHUB_ENV"
       - name: Get cuda version for amd
-        run: "echo CUDA_VERSION_AMD=$(cat conda-lock.yml | grep -E -A 4 'name:
-          pytorch-cuda$' | tail -n1 | grep -Eo [0-9]+.[0-9]+) >> $GITHUB_ENV"
+        run: "echo CUDA_VERSION_AMD=$(.github/scripts/release.py pytorch-cuda) >> $GITHUB_ENV"
+      - name: Print version info
+        run: |
+          echo "TORCH_VERSION_AMD=$TORCH_VERSION_AMD"
+          echo "CUDA_VERSION_AMD=$CUDA_VERSION_AMD"
       - name: Build and push AMD
         uses: docker/build-push-action@v4
         with:
@@ -48,4 +50,3 @@ jobs:
           push: true
           # change these tags to match your Docker Hub repo
           tags: konstantinjdobler/nlp-research-template:pytorch${{env.TORCH_VERSION_AMD}}-cuda${{env.CUDA_VERSION_AMD}}, konstantinjdobler/nlp-research-template:latest
-          
