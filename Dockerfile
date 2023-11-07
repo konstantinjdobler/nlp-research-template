@@ -13,7 +13,6 @@ ARG OS_SELECTOR=ubi8
 # Load micromamba container to copy from later
 FROM --platform=$TARGETPLATFORM mambaorg/micromamba:1.5.1 as micromamba
 
-
 ####################################################
 ################ BASE IMAGES #######################
 ####################################################
