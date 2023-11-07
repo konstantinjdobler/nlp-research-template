@@ -35,9 +35,9 @@ jobs:
           username: konstantinjdobler # change this
           password: ${{secrets.DOCKER_REGISTRY_TOKEN}}
       - name: Get torch version for amd
-        run: "echo TORCH_VERSION_AMD=$(.github/scripts/release.py pytorch) >> $GITHUB_ENV"
+        run: "echo TORCH_VERSION_AMD=$(.github/scripts/extract_version_info.py pytorch) >> $GITHUB_ENV"
       - name: Get cuda version for amd
-        run: "echo CUDA_VERSION_AMD=$(.github/scripts/release.py pytorch-cuda) >> $GITHUB_ENV"
+        run: "echo CUDA_VERSION_AMD=$(.github/scripts/extract_version_info.py pytorch-cuda) >> $GITHUB_ENV"
       - name: Print version info
         run: |
           echo "TORCH_VERSION_AMD=$TORCH_VERSION_AMD"
