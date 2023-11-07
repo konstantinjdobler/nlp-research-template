@@ -57,6 +57,8 @@ COPY ppc64le.conda-lock.yml /locks/conda-lock.yml
 # -----------------
 ARG TARGETARCH
 FROM ${TARGETARCH}${OS_SELECTOR} as nvidia-cuda-with-micromamba
+
+# ---------
 # From https://github.com/mamba-org/micromamba-docker#adding-micromamba-to-an-existing-docker-image
 # The commands below add micromamba to an existing image to give the capability to ad-hoc install new dependencies
 USER root
@@ -93,6 +95,7 @@ ENTRYPOINT ["/usr/local/bin/_entrypoint.sh"]
 
 # You can modify the CMD statement as needed....
 CMD ["/bin/bash"]
+# ------------
 
 
 ############################################################
