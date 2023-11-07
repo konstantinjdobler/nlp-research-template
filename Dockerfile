@@ -13,7 +13,6 @@ ARG OS_SELECTOR=ubi8
 # Load micromamba container to copy from later
 FROM --platform=$TARGETPLATFORM mambaorg/micromamba:1.5.1 as micromamba
 
-
 ####################################################
 ################ BASE IMAGES #######################
 ####################################################
@@ -57,6 +56,8 @@ COPY ppc64le.conda-lock.yml /locks/conda-lock.yml
 # -----------------
 ARG TARGETARCH
 FROM ${TARGETARCH}${OS_SELECTOR} as nvidia-cuda-with-micromamba
+
+# ---------
 # From https://github.com/mamba-org/micromamba-docker#adding-micromamba-to-an-existing-docker-image
 # The commands below add micromamba to an existing image to give the capability to ad-hoc install new dependencies
 USER root
@@ -93,6 +94,7 @@ ENTRYPOINT ["/usr/local/bin/_entrypoint.sh"]
 
 # You can modify the CMD statement as needed....
 CMD ["/bin/bash"]
+# ------------
 
 
 ############################################################
@@ -114,6 +116,7 @@ RUN --mount=type=cache,target=$MAMBA_ROOT_PREFIX/pkgs,id=conda-$TARGETPLATFORM,u
     micromamba install --name base --yes --file /locks/conda-lock.yml 
 
 # Install optional tricky pip dependencies that do not work with conda-lock
+# --no-deps --no-cache-dir to prevent conflicts with micromamba, might have to remove it depending on your use case
 # RUN micromamba run -n research pip install example-dependency --no-deps --no-cache-dir
 
 

@@ -1,0 +1,52 @@
+name: Build and push Docker image
+on:
+  push:
+    branches:
+      - main
+      - add/docker_ci
+    paths:
+      - Dockerfile
+      - conda-lock.yml
+jobs:
+  docker:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Maximize build space
+        uses: easimon/maximize-build-space@master
+        with:
+          remove-dotnet: "true"
+          remove-codeql: "true"
+          remove-haskell: "true"
+          remove-android: "true"
+          overprovision-lvm: "true"
+          remove-docker-images: "true"
+      - name: Checkout
+        uses: actions/checkout@v3
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v2
+        with:
+          platforms: amd64
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+      - name: Login to Docker Hub
+        uses: docker/login-action@v2
+        with:
+          registry: ${{secrets.DOCKER_REGISTRY}} # if not set, default to Docker Hub
+          username: konstantinjdobler # change this
+          password: ${{secrets.DOCKER_REGISTRY_TOKEN}}
+      - name: Get torch version for amd
+        run: "echo TORCH_VERSION_AMD=$(.github/scripts/extract_version_info.py pytorch) >> $GITHUB_ENV"
+      - name: Get cuda version for amd
+        run: "echo CUDA_VERSION_AMD=$(.github/scripts/extract_version_info.py pytorch-cuda) >> $GITHUB_ENV"
+      - name: Print version info
+        run: |
+          echo "TORCH_VERSION_AMD=$TORCH_VERSION_AMD"
+          echo "CUDA_VERSION_AMD=$CUDA_VERSION_AMD"
+      - name: Build and push AMD
+        uses: docker/build-push-action@v4
+        with:
+          context: .
+          platforms: linux/amd64
+          push: true
+          # change these tags to match your Docker Hub repo
+          tags: konstantinjdobler/nlp-research-template:pytorch${{env.TORCH_VERSION_AMD}}-cuda${{env.CUDA_VERSION_AMD}}, konstantinjdobler/nlp-research-template:latest, konstantinjdobler/nlp-research-template:git-${{ github.sha }}
