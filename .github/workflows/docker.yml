@@ -49,4 +49,4 @@ jobs:
           platforms: linux/amd64
           push: true
           # change these tags to match your Docker Hub repo
-          tags: konstantinjdobler/nlp-research-template:pytorch${{env.TORCH_VERSION_AMD}}-cuda${{env.CUDA_VERSION_AMD}}, konstantinjdobler/nlp-research-template:latest
+          tags: konstantinjdobler/nlp-research-template:pytorch${{env.TORCH_VERSION_AMD}}-cuda${{env.CUDA_VERSION_AMD}}, konstantinjdobler/nlp-research-template:latest, konstantinjdobler/nlp-research-template:git-${{ github.sha }}
