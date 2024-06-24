@@ -27,6 +27,8 @@
 		//	"--gpus",
 		//	"device=CHANGE_ME"
 	],
+	"workspaceMount": "source=${localWorkspaceFolder},target=/workspace,type=bind",
+	"workspaceFolder": "/workspace",
 	// ------------------------------------------------------------
 	// Setup your mounts and env vars like for a docker run command
 	// ------------------------------------------------------------
@@ -38,9 +40,9 @@
 	// "source=/scratch/YOUR_USERNAME/cache,target=/scratch/YOUR_USERNAME/cache,type=bind"
 	// ],
 	"mounts": [
-		"source=${localEnv:HOME}/.netrc,target=/home/mamba/.netrc,type=bind", // this is to get WANDB_API_KEY from .netrc
-		"source=${localEnv:HOME}/.gitconfig,target=/home/mamba/.gitconfig,type=bind", // this is to get git credentials
-		"source=${localEnv:HOME}/.cache,target=/home/mamba/.cache,type=bind", // general cache directory
+		"source=${localEnv:HOME}/.netrc,target=/home/mambauser/.netrc,type=bind", // this is to get WANDB_API_KEY from .netrc
+		"source=${localEnv:HOME}/.gitconfig,target=/home/mambauser/.gitconfig,type=bind", // this is to get git credentials
+		"source=${localEnv:HOME}/.cache,target=/home/mambauser/.cache,type=bind", // general cache directory
 	],
 	"remoteEnv": {
 		"WANDB_API_KEY": "${localEnv:WANDB_API_KEY}",
@@ -77,7 +79,8 @@
 				"jgclark.vscode-todo-highlight",
 				"percy.vscode-pydata-viewer",
 				"njqdev.vscode-python-typehint",
-				"foxundermoon.shell-format"
+				"foxundermoon.shell-format",
+				"ms-toolsai.jupyter",
 			]
 		}
 	},
