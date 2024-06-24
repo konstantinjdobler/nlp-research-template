@@ -40,6 +40,7 @@ dependencies:
   # Dev dependencies
   - black
   - ruff
+  - jupyterlab
 
   # pip dependencies
   - pip

@@ -79,7 +79,8 @@
 				"jgclark.vscode-todo-highlight",
 				"percy.vscode-pydata-viewer",
 				"njqdev.vscode-python-typehint",
-				"foxundermoon.shell-format"
+				"foxundermoon.shell-format",
+				"ms-toolsai.jupyter",
 			]
 		}
 	},
